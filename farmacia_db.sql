@@ -57,6 +57,11 @@ CREATE TABLE farmacia_jae.categoria (
 CREATE TABLE farmacia_jae.proveedor (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   nombre character varying NOT NULL,
+  codigo character varying NOT NULL UNIQUE,
+  tipo character varying,
+  representante character varying,
+  origen character varying,
+  descripcion text,
   ruc character varying,
   telefono character varying,
   correo character varying,
@@ -83,7 +88,16 @@ CREATE TABLE farmacia_jae.producto (
   concentracion character varying,
   presentacion character varying,
   unidad_medida character varying NOT NULL DEFAULT 'unidad'::character varying,
-  precio_venta numeric NOT NULL CHECK (precio_venta >= 0::numeric),
+  origen character varying,
+  fabricante character varying,
+  descripcion text,
+  indicaciones text,
+  contraindicaciones text,
+  requiere_receta boolean NOT NULL DEFAULT false,
+  unidades_por_envase integer NOT NULL DEFAULT 1 CHECK (unidades_por_envase > 0),
+  unidad_venta character varying NOT NULL DEFAULT 'unidad',
+  -- El precio corresponde a la unidad de venta; cero indica pendiente de definir.
+  precio_venta numeric NOT NULL DEFAULT 0 CHECK (precio_venta >= 0::numeric),
   stock_minimo integer NOT NULL DEFAULT 0 CHECK (stock_minimo >= 0),
   stock_maximo integer,
   activo boolean NOT NULL DEFAULT true,
@@ -92,11 +106,24 @@ CREATE TABLE farmacia_jae.producto (
   CONSTRAINT producto_pkey PRIMARY KEY (id),
   CONSTRAINT producto_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES farmacia_jae.categoria(id)
 );
+-- Relación comercial N:M. El stock pertenece al lote, no a esta tabla.
+CREATE TABLE farmacia_jae.producto_proveedor (
+  producto_id bigint NOT NULL REFERENCES farmacia_jae.producto(id),
+  proveedor_id bigint NOT NULL REFERENCES farmacia_jae.proveedor(id),
+  codigo_proveedor character varying,
+  costo_referencia numeric NOT NULL DEFAULT 0 CHECK (costo_referencia >= 0),
+  plazo_dias integer NOT NULL DEFAULT 0 CHECK (plazo_dias BETWEEN 0 AND 365),
+  activo boolean NOT NULL DEFAULT true,
+  PRIMARY KEY (producto_id, proveedor_id)
+);
 CREATE TABLE farmacia_jae.lote (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   producto_id bigint NOT NULL,
   proveedor_id bigint,
   numero_lote character varying NOT NULL,
+  -- Transcribir el código del fabricante; no deducir fechas del número de lote.
+  fecha_fabricacion date,
+  ubicacion character varying,
   fecha_ingreso date NOT NULL DEFAULT CURRENT_DATE,
   fecha_vencimiento date NOT NULL,
   costo_unitario numeric NOT NULL DEFAULT 0 CHECK (costo_unitario >= 0::numeric),
@@ -105,6 +132,7 @@ CREATE TABLE farmacia_jae.lote (
   observacion character varying,
   creado_en timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT lote_pkey PRIMARY KEY (id),
+  CONSTRAINT lote_fechas CHECK (fecha_fabricacion IS NULL OR (fecha_fabricacion < fecha_vencimiento AND fecha_fabricacion <= fecha_ingreso)),
   CONSTRAINT lote_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES farmacia_jae.producto(id),
   CONSTRAINT lote_proveedor_id_fkey FOREIGN KEY (proveedor_id) REFERENCES farmacia_jae.proveedor(id)
 );

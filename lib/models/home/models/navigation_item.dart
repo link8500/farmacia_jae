@@ -25,3 +25,34 @@ class NavigationItem {
   /// Indicador opcional, por ejemplo la cantidad de alertas.
   final String? badge;
 }
+
+/// Módulo de navegación que agrupa pantallas relacionadas.
+///
+/// Los módulos se muestran como secciones desplegables en el menú lateral.
+/// Mantener esta relación como datos permite reutilizar el mismo menú en
+/// escritorio y dentro del drawer móvil sin duplicar reglas de navegación.
+class NavigationModule {
+  /// Crea un módulo con sus pantallas hijas.
+  const NavigationModule({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.items,
+  });
+
+  /// Identificador estable utilizado para conservar el estado de expansión.
+  final String id;
+
+  /// Nombre visible del módulo.
+  final String label;
+
+  /// Icono que representa el módulo.
+  final IconData icon;
+
+  /// Pantallas que pertenecen a este módulo.
+  final List<NavigationItem> items;
+
+  /// Indica si el módulo contiene la pantalla activa.
+  bool contains(int selectedIndex) =>
+      items.any((item) => item.index == selectedIndex);
+}

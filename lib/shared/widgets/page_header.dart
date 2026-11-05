@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/responsive.dart';
-import '../themes/app_colors.dart';
+import '../themes/app_palette.dart';
 
 /// Cabecera reutilizable para las pantallas internas del sistema.
 class PageHeader extends StatelessWidget {
@@ -27,14 +27,16 @@ class PageHeader extends StatelessWidget {
       builder: (context, constraints) {
         // El botón pasa debajo del título cuando el espacio horizontal ya
         // no permite mantener una cabecera cómoda en una sola fila.
-        final compact = isCompactWidth(constraints.maxWidth);
+        final compact =
+            isCompactWidth(constraints.maxWidth) ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.3;
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: const TextStyle(
-                color: AppColors.ink,
+              style: TextStyle(
+                color: context.palette.ink,
                 fontSize: 23,
                 fontWeight: FontWeight.w800,
               ),
@@ -42,14 +44,27 @@ class PageHeader extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               description,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
           ],
         );
         final compactAction = action == null
             ? null
             : <Widget>[const SizedBox(height: 14), action!];
-        final wideAction = action == null ? null : <Widget>[action!];
+        // La fila entrega ancho ilimitado a hijos no flexibles. Acotar las
+        // acciones permite que sus Wrap formen otra línea, también en tabletas
+        // o al añadir comandos a una ficha, sin expulsar el título de la vista.
+        final wideAction = action == null
+            ? null
+            : <Widget>[
+                const SizedBox(width: 16),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * .64,
+                  ),
+                  child: action!,
+                ),
+              ];
 
         if (compact) {
           return Column(

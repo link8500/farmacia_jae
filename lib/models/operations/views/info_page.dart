@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../shared/themes/app_colors.dart';
+import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/section_card.dart';
 
@@ -48,11 +48,11 @@ class InfoPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const ListTile(
+                ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
                     Icons.receipt_long_outlined,
-                    color: AppColors.blue,
+                    color: context.palette.blue,
                   ),
                   title: Text('Registro listo para usar'),
                   subtitle: Text(

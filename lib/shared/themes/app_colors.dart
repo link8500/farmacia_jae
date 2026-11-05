@@ -15,4 +15,5 @@ abstract final class AppColors {
   static const green = Color(0xFF199B67);
   static const orange = Color(0xFFF08B3E);
   static const red = Color(0xFFE25D63);
+  static const verde = Color(0xFFE8F5F1);
 }

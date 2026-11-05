@@ -1,102 +1,171 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/responsive.dart';
-import '../../../shared/themes/app_colors.dart';
+import '../../../models/auth/models/session_user.dart';
+import '../../../shared/themes/app_palette.dart';
+import '../../../shared/widgets/user_avatar.dart';
 
-/// Barra superior para escritorio.
+/// Cabecera del área privada con cuenta activa y cierre de sesión.
 class TopBar extends StatelessWidget {
-  /// Crea la barra con el título actual y acceso a notificaciones.
-  const TopBar({required this.title, required this.onNotifications, super.key});
-
-  /// Nombre de la pantalla activa.
+  const TopBar({
+    required this.title,
+    required this.user,
+    required this.onNotifications,
+    required this.onProfile,
+    required this.onLogout,
+    this.showNotificationBadges = true,
+    this.onPreferences,
+    super.key,
+  });
   final String title;
-
-  /// Acción del botón de notificaciones.
+  final SessionUser user;
   final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+  final VoidCallback onLogout;
+  final VoidCallback? onPreferences;
+  final bool showNotificationBadges;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // La búsqueda y el texto del usuario son accesorios: se ocultan
-        // antes de provocar overflow para priorizar título y notificaciones.
-        final showSearch = constraints.maxWidth >= AppBreakpoints.desktop;
-        final showUserName = constraints.maxWidth >= 760;
-
-        return Container(
-          height: 84,
-          padding: const EdgeInsets.symmetric(horizontal: 34),
-          decoration: const BoxDecoration(
-            color: AppColors.canvas,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              if (showSearch)
-                const SizedBox(
-                  width: 250,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Buscar en el sistema',
-                      prefixIcon: Icon(Icons.search_rounded),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final showUserName = constraints.maxWidth >= 680;
+      return Container(
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        decoration: BoxDecoration(
+          color: context.palette.surface,
+          border: Border(bottom: BorderSide(color: context.palette.border)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ADMINISTRACIÓN',
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 9,
+                      letterSpacing: 1.5,
                     ),
                   ),
+                  const SizedBox(height: 5),
+                  Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.palette.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Notificaciones',
+              onPressed: onNotifications,
+              icon: Badge(
+                isLabelVisible: showNotificationBadges,
+                smallSize: 7,
+                backgroundColor: AppColors.red,
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  color: context.palette.muted,
                 ),
-              IconButton(
-                onPressed: onNotifications,
-                icon: const Badge(
-                  smallSize: 7,
-                  backgroundColor: AppColors.red,
-                  child: Icon(
-                    Icons.notifications_none_rounded,
-                    color: AppColors.muted,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Container(height: 31, width: 1, color: context.palette.border),
+            const SizedBox(width: 18),
+            PopupMenuButton<String>(
+              tooltip: 'Menú de cuenta',
+              onSelected: (value) {
+                if (value == 'profile') {
+                  onProfile();
+                } else if (value == 'preferences') {
+                  onPreferences?.call();
+                } else {
+                  onLogout();
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline, size: 18),
+                      SizedBox(width: 9),
+                      Text('Mi perfil'),
+                    ],
                   ),
                 ),
-              ),
-              const CircleAvatar(
-                radius: 17,
-                backgroundColor: AppColors.navy,
-                child: Text(
-                  'AD',
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-              if (showUserName) ...[
-                const SizedBox(width: 9),
-                const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Administrador',
-                      style: TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                if (onPreferences != null)
+                  const PopupMenuItem(
+                    value: 'preferences',
+                    child: Row(
+                      children: [
+                        Icon(Icons.tune_rounded, size: 18),
+                        SizedBox(width: 9),
+                        Text('Mis preferencias'),
+                      ],
                     ),
-                    Text(
-                      'Farmacia JAE',
-                      style: TextStyle(color: AppColors.muted, fontSize: 10),
-                    ),
-                  ],
+                  ),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, size: 18),
+                      SizedBox(width: 9),
+                      Text('Cerrar sesión'),
+                    ],
+                  ),
                 ),
               ],
-            ],
-          ),
-        );
-      },
-    );
-  }
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    UserAvatar(user: user),
+                    if (showUserName) ...[
+                      const SizedBox(width: 10),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.name,
+                            style: TextStyle(
+                              color: context.palette.ink,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            user.role.label,
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 17,
+                        color: context.palette.muted,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

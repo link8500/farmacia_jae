@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../themes/app_colors.dart';
+import '../themes/app_palette.dart';
 
 /// Tarjeta de indicador reutilizable para dashboards y reportes.
 class StatCard extends StatelessWidget {
@@ -69,7 +69,7 @@ class StatCard extends StatelessWidget {
                         style: TextStyle(
                           color: detail.contains('%')
                               ? AppColors.green
-                              : AppColors.muted,
+                              : context.palette.muted,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -81,13 +81,13 @@ class StatCard extends StatelessWidget {
               const SizedBox(height: 17),
               Text(
                 label,
-                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
               const SizedBox(height: 5),
               Text(
                 value,
-                style: const TextStyle(
-                  color: AppColors.ink,
+                style: TextStyle(
+                  color: context.palette.ink,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                 ),

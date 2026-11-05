@@ -1,0 +1,72 @@
+# Categorías y palabras que se utilizarán para buscar.
+$categorias = @{
+    medicamentos = "medicine tablets"
+}
+
+$cantidad = 5
+
+# Crea una carpeta nueva para esta descarga.
+$raiz = ".\imagenes-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+New-Item -ItemType Directory -Path $raiz | Out-Null
+
+$vistos = @{}
+$fuentes = @()
+
+foreach ($categoria in $categorias.GetEnumerator()) {
+    $carpeta = Join-Path $raiz $categoria.Key
+    New-Item -ItemType Directory -Path $carpeta | Out-Null
+
+    $busqueda = [uri]::EscapeDataString($categoria.Value)
+    $api = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$busqueda&gsrlimit=20&prop=imageinfo&iiprop=url%7Cmime%7Csha1&iiurlwidth=800&format=json&formatversion=2"
+
+    try {
+        $resultado = Invoke-RestMethod -Uri $api `
+            -UserAgent "ImagenesPractica/1.0 (uso educativo)" -ErrorAction Stop
+    } catch {
+        Write-Warning "No se pudo buscar: $($categoria.Key)"
+        continue
+    }
+
+    $contador = 0
+
+    foreach ($pagina in $resultado.query.pages) {
+        if ($contador -ge $cantidad) { break }
+        if (-not $pagina.imageinfo) { continue }
+
+        $info = $pagina.imageinfo[0]
+
+        # Solo JPEG y sin repetir el mismo archivo.
+        if ($info.mime -ne "image/jpeg") { continue }
+        if ($vistos.ContainsKey($info.sha1)) { continue }
+
+        $nombre = "$($pagina.pageid).jpg"
+        $destino = Join-Path $carpeta $nombre
+
+        # Prefiere una versión reducida para descargar menos datos.
+        $enlace = $info.url
+        if ($info.thumburl) { $enlace = $info.thumburl }
+
+        try {
+            Invoke-WebRequest -Uri $enlace -OutFile $destino `
+                -UseBasicParsing -ErrorAction Stop
+
+            $vistos[$info.sha1] = $true
+            $contador++
+
+            # Conserva la ficha para consultar autor y licencia.
+            $fuentes += [pscustomobject]@{
+                Categoria = $categoria.Key
+                Archivo   = $nombre
+                Ficha     = $info.descriptionurl
+            }
+
+            Write-Host "Descargada: $($categoria.Key)/$nombre"
+            Start-Sleep -Milliseconds 500
+        } catch {
+            Write-Warning "No se pudo descargar: $nombre"
+        }
+    }
+}
+
+$fuentes | Export-Csv (Join-Path $raiz "fuentes.csv") `
+    -NoTypeInformation -Encoding UTF8

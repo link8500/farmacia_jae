@@ -1,0 +1,6 @@
+# Flutter resuelve estas rutas después de cargar index.html.
+# Los recursos estáticos fuera de estas rutas conservan sus respuestas normales.
+/presentacion        /index.html  200
+/presentacion/*      /index.html  200
+/administracion      /index.html  200
+/administracion/*    /index.html  200

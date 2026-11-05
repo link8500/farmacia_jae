@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../shared/themes/app_colors.dart';
+import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/section_card.dart';
 
 /// Grupo de preferencias o controles de configuración.
@@ -19,8 +19,8 @@ class SettingGroup extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: AppColors.ink,
+            style: TextStyle(
+              color: context.palette.ink,
               fontSize: 14,
               fontWeight: FontWeight.w800,
             ),
@@ -31,11 +31,11 @@ class SettingGroup extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 row,
-                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
-              trailing: const Icon(
+              trailing: Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.muted,
+                color: context.palette.muted,
               ),
             ),
           ),

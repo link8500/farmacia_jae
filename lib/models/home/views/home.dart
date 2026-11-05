@@ -1,188 +1,183 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/routing/app_paths.dart';
+import '../../../core/services/auth_controller.dart';
+import '../../../core/services/preferences_controller.dart';
 import '../../../core/services/pharmacy_controller.dart';
 import '../../../core/utils/responsive.dart';
-import '../../../shared/themes/app_colors.dart';
-import '../../dashboard/views/dashboard_page.dart';
-import '../../incidents/views/incidents_page.dart';
-import '../../inventory/views/inventory_page.dart';
-import '../../operations/views/info_page.dart';
-import '../../reports/views/reports_page.dart';
-import '../../sales/views/sales_page.dart';
-import '../../settings/views/settings_page.dart';
+import '../../../shared/themes/app_palette.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/top_bar.dart';
+import '../../../shared/widgets/administration_breadcrumbs.dart';
+import '../../../shared/widgets/user_avatar.dart';
 
-/// Contenedor principal que coordina navegación y estado compartido.
+/// Shell de administración. La URL es la fuente de la navegación, de modo
+/// que volver y abrir enlaces directos conserva la pantalla correcta.
 class HomeScreen extends StatefulWidget {
-  /// Crea la pantalla principal.
-  const HomeScreen({super.key});
-
+  const HomeScreen({
+    required this.auth,
+    required this.selectedPage,
+    required this.child,
+    this.preferences,
+    this.controller,
+    this.uri,
+    super.key,
+  });
+  final AuthController auth;
+  final PreferencesController? preferences;
+  final PharmacyController? controller;
+  final int selectedPage;
+  final Uri? uri;
+  final Widget child;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final PharmacyController controller;
-  int selectedPage = 0;
-
-  static const pageTitles = <String>[
-    'Resumen general',
-    'Punto de venta',
-    'Inventario',
-    'Compras',
-    'Proveedores',
-    'Clientes',
-    'Reportes',
-    'Incidentes TI',
-    'Configuración',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    controller = PharmacyController();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  /// Cambia la pantalla activa y cierra el drawer en móvil si está abierto.
-  void navigateTo(int index) {
-    setState(() => selectedPage = index);
-    Navigator.of(context).maybePop();
-  }
-
-  /// Muestra un mensaje breve sin acoplar los módulos al estado global.
-  void showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
-  }
-
-  /// Muestra el formulario mínimo para registrar un producto.
-  Future<void> openProductDialog() async {
-    final controller = TextEditingController();
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Registrar producto'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Nombre del producto'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, controller.text.trim().isNotEmpty),
-            child: const Text('Guardar'),
-          ),
-        ],
+  final _scaffold = GlobalKey<ScaffoldState>();
+  Widget _body() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      AdministrationBreadcrumbs(
+        section: widget.selectedPage,
+        uri: widget.uri ?? Uri.parse(AppPaths.sections[widget.selectedPage]),
+        onNavigate: context.go,
       ),
-    );
-    if (saved == true) {
-      this.controller.addProduct(controller.text.trim());
-      showMessage('Producto guardado en el inventario');
-    }
-    controller.dispose();
+      if (widget.controller?.storageError != null)
+        Material(
+          color: context.palette.negativeSurface,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  widget.controller!.storageError!,
+                  style: TextStyle(color: context.palette.ink),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (widget.controller!.loadFailed) {
+                      widget.controller!.retryLoading();
+                    } else {
+                      widget.controller!.retrySaving();
+                    }
+                  },
+                  child: const Text('Reintentar almacenamiento'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      Expanded(child: widget.child),
+    ],
+  );
+
+  /// Cierra solo el drawer: nunca hace pop de una ruta de escritorio.
+  void _navigateTo(int index) {
+    _scaffold.currentState?.closeDrawer();
+    context.go(AppPaths.sections[index]);
   }
 
-  /// Abre la hoja de notificaciones globales.
-  void openNotifications() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => const NotificationsSheet(),
-    );
-  }
-
-  /// Decide qué vista corresponde al índice seleccionado.
-  Widget buildCurrentPage() {
-    if (selectedPage == 0) {
-      return DashboardPage(controller: controller, onNavigate: navigateTo);
-    }
-    if (selectedPage == 1) {
-      return SalesPage(controller: controller, onMessage: showMessage);
-    }
-    if (selectedPage == 2) {
-      return InventoryPage(
-        controller: controller,
-        onAddProduct: openProductDialog,
-      );
-    }
-    if (selectedPage == 6) return const ReportsPage();
-    if (selectedPage == 7) return const IncidentsPage();
-    if (selectedPage == 8) return const SettingsPage();
-    return InfoPage(title: pageTitles[selectedPage], pageIndex: selectedPage);
-  }
+  void _notifications() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (_) => NotificationsSheet(controller: widget.controller),
+  );
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // En móvil cambiamos la navegación lateral por un drawer para
-            // conservar el ancho útil de los módulos principales.
-            if (isMobileWidth(constraints.maxWidth)) {
-              return Scaffold(
-                drawer: Drawer(
-                  child: Sidebar(selected: selectedPage, onSelect: navigateTo),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: Listenable.merge([
+      widget.auth,
+      ?widget.preferences,
+      ?widget.controller,
+    ]),
+    builder: (context, _) {
+      final user = widget.auth.user;
+      if (user == null) return const SizedBox.shrink();
+      final title = AppPaths.titles[widget.selectedPage];
+      final sidebar = Sidebar(
+        selected: widget.selectedPage,
+        user: user,
+        onSelect: _navigateTo,
+        onProfile: () => _navigateTo(9),
+        onLogout: widget.auth.signOut,
+      );
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          if (isMobileWidth(constraints.maxWidth)) {
+            return Scaffold(
+              key: _scaffold,
+              drawer: Drawer(child: sidebar),
+              appBar: AppBar(
+                title: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                appBar: AppBar(
-                  title: Text(
-                    pageTitles[selectedPage],
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                actions: [
+                  IconButton(
+                    tooltip: 'Notificaciones',
+                    onPressed: _notifications,
+                    icon: Badge(
+                      smallSize: 7,
+                      backgroundColor: AppColors.red,
+                      isLabelVisible:
+                          (widget.preferences?.value.showNotificationBadges ??
+                              true) &&
+                          (widget.controller?.alertsCount ?? 0) > 0,
+                      child: const Icon(Icons.notifications_none_rounded),
                     ),
                   ),
-                  actions: [
-                    IconButton(
-                      onPressed: openNotifications,
-                      icon: const Badge(
-                        smallSize: 7,
-                        backgroundColor: AppColors.red,
-                        child: Icon(Icons.notifications_none_rounded),
-                      ),
-                    ),
-                  ],
-                ),
-                body: buildCurrentPage(),
-              );
-            }
-
-            return Scaffold(
-              body: Row(
-                children: [
-                  Sidebar(selected: selectedPage, onSelect: navigateTo),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        TopBar(
-                          title: pageTitles[selectedPage],
-                          onNotifications: openNotifications,
-                        ),
-                        Expanded(child: buildCurrentPage()),
-                      ],
-                    ),
+                  IconButton(
+                    tooltip: 'Mi perfil',
+                    onPressed: () => _navigateTo(9),
+                    icon: UserAvatar(user: user, size: 30),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar sesión',
+                    onPressed: widget.auth.signOut,
+                    icon: const Icon(Icons.logout_rounded, size: 20),
                   ),
                 ],
               ),
+              body: _body(),
             );
-          },
-        );
-      },
-    );
-  }
+          }
+          return Scaffold(
+            key: _scaffold,
+            body: Row(
+              // La navegación ocupa toda la altura, también en pantallas altas.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sidebar,
+                Expanded(
+                  child: Column(
+                    children: [
+                      TopBar(
+                        showNotificationBadges:
+                            (widget.preferences?.value.showNotificationBadges ??
+                                true) &&
+                            (widget.controller?.alertsCount ?? 0) > 0,
+                        title: title,
+                        user: user,
+                        onNotifications: _notifications,
+                        onProfile: () => _navigateTo(9),
+                        onPreferences: () => _navigateTo(14),
+                        onLogout: widget.auth.signOut,
+                      ),
+                      Expanded(child: _body()),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 }

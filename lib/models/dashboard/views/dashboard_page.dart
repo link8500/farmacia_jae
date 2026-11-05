@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/pharmacy_controller.dart';
-import '../../../core/utils/responsive.dart';
-import '../../../shared/themes/app_colors.dart';
+import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/stat_card.dart';
 import '../widgets/dashboard_sections.dart';
 
-/// Dashboard operativo con indicadores del negocio y de TI.
-///
-/// Resume las prioridades del diagnóstico: control financiero, existencias,
-/// continuidad, trazabilidad y supervisión administrativa.
+/// Resumen compacto: indicadores, comparativo y alertas. El historial y las
+/// herramientas operativas se consultan en sus módulos, no alargan la portada.
 class DashboardPage extends StatelessWidget {
   /// Crea el dashboard con el estado de farmacia y la navegación disponible.
   const DashboardPage({
     required this.controller,
     required this.onNavigate,
+    this.isAdministrator = true,
     super.key,
   });
 
@@ -23,73 +21,88 @@ class DashboardPage extends StatelessWidget {
   /// Permite saltar a otra sección desde una acción rápida.
   final ValueChanged<int> onNavigate;
 
+  /// Las acciones administrativas no se presentan al personal operativo.
+  final bool isAdministrator;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Los paneles dejan de competir por espacio y se apilan en tabletas
         // pequeñas y móviles para mantener legibles sus contenidos.
-        final widePanel = constraints.maxWidth < AppBreakpoints.tabletContent
-            ? constraints.maxWidth
-            : 620.0;
-        final alertPanel = constraints.maxWidth < AppBreakpoints.tabletContent
-            ? constraints.maxWidth
-            : 340.0;
+        final padding = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 24.0;
+        final contentWidth = constraints.maxWidth - padding * 2;
+        final columns = contentWidth >= 880
+            ? 4
+            : contentWidth >= 520
+            ? 2
+            : 1;
+        final statWidth = (contentWidth - 16 * (columns - 1)) / columns;
+        final widePanel = contentWidth >= 860
+            ? (contentWidth - 20) * .66
+            : contentWidth;
+        final alertPanel = contentWidth >= 860
+            ? (contentWidth - 20) * .34
+            : contentWidth;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(34, 28, 34, 34),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Buenos días, equipo 👋',
+              Text(
+                'Buenos días, equipo',
                 style: TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 25,
+                  color: context.palette.ink,
+                  fontSize: 23,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 7),
-              const Text(
-                'Este es el estado de tu farmacia para hoy.',
-                style: TextStyle(color: AppColors.muted, fontSize: 13),
+              Text(
+                'Vista operativa de la farmacia · Registros locales del prototipo.',
+                style: TextStyle(color: context.palette.muted, fontSize: 13),
               ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 16,
                 runSpacing: 16,
                 children: [
-                  const StatCard(
+                  StatCard(
+                    width: statWidth,
                     label: 'Ventas del día',
-                    value: r'C$ 1,248.50',
-                    detail: '+12.8%',
+                    value: 'C\$ ${controller.revenueToday.toStringAsFixed(2)}',
+                    detail: 'Ventas vigentes de hoy',
                     icon: Icons.trending_up_rounded,
                     color: AppColors.green,
-                    background: Color(0xFFEAF8F1),
+                    background: context.palette.positiveSurface,
                   ),
                   StatCard(
+                    width: statWidth,
                     label: 'Productos en stock',
                     value: controller.stockTotal.toString(),
-                    detail: '+4.2%',
+                    detail: 'Saldo físico actual',
                     icon: Icons.inventory_2_rounded,
-                    color: AppColors.blue,
-                    background: AppColors.paleBlue,
+                    color: context.palette.blue,
+                    background: context.palette.paleBlue,
                   ),
                   StatCard(
+                    width: statWidth,
                     label: 'Bajo mínimo',
                     value: controller.lowStockCount.toString(),
                     detail: 'Requieren atención',
                     icon: Icons.warning_amber_rounded,
                     color: AppColors.orange,
-                    background: Color(0xFFFFF4E8),
+                    background: context.palette.warningSurface,
                   ),
                   StatCard(
-                    label: 'Por vencer',
+                    width: statWidth,
+                    label: 'Lotes por vencer',
                     value: controller.expiringCount.toString(),
                     detail: 'En próximos 90 días',
                     icon: Icons.event_busy_rounded,
                     color: AppColors.red,
-                    background: Color(0xFFFFEFF0),
+                    background: context.palette.negativeSurface,
                   ),
                 ],
               ),
@@ -98,22 +111,24 @@ class DashboardPage extends StatelessWidget {
                 spacing: 20,
                 runSpacing: 20,
                 children: [
-                  SizedBox(width: widePanel, child: const SalesChartCard()),
+                  SizedBox(
+                    width: widePanel,
+                    child: SalesChartCard(controller: controller),
+                  ),
                   SizedBox(
                     width: alertPanel,
                     child: InventoryAlertsCard(
-                      products: controller.products,
+                      entries: controller.inventory,
                       onNavigate: onNavigate,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              QuickActionsCard(onNavigate: onNavigate),
-              const SizedBox(height: 20),
-              const RecentActivityCard(),
-              const SizedBox(height: 20),
-              ControlsCard(onNavigate: onNavigate),
+              QuickActionsCard(
+                onNavigate: onNavigate,
+                isAdministrator: isAdministrator,
+              ),
             ],
           ),
         );
