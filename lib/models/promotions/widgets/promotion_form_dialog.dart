@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/services/promotions_controller.dart';
 import '../../../core/utils/form_validators.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/local_image_data.dart';
+import '../../../shared/widgets/draft_photo_actions.dart';
 import '../../../shared/widgets/form_dialog.dart';
-import '../../products/models/product_illustration.dart';
 import '../models/promotion.dart';
-import '../models/promotion_image.dart';
 import 'promotion_artwork.dart';
 
 /// Editor de contenido y vigencia; no calcula precios ni descuentos fiscales.
@@ -26,9 +26,11 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
   late final TextEditingController _title, _description, _badge, _conditions;
   late DateTime _start, _end;
   late String _image;
+  late String _photo;
   late String _id;
   late PromotionStatus _status;
   bool _saving = false;
+  bool _editingPhoto = false;
   String? _error;
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
     _end = p?.endsAt ?? _start.add(const Duration(days: 30));
     _status = p?.status ?? PromotionStatus.draft;
     _image = p?.illustrationKey ?? '';
+    _photo = p?.photoData ?? '';
   }
 
   @override
@@ -70,7 +73,7 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
   }
 
   Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
+    if (_saving || _editingPhoto || !_form.currentState!.validate()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -86,6 +89,7 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
         endsAt: _end,
         status: _status,
         illustrationKey: _image,
+        photoData: _photo,
       ),
     );
     if (!mounted) return;
@@ -113,7 +117,7 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
       ),
       FilledButton(
         key: const Key('promotion-save'),
-        onPressed: _saving ? null : _save,
+        onPressed: _saving || _editingPhoto ? null : _save,
         child: Text(_saving ? 'Guardando…' : 'Guardar promoción'),
       ),
     ],
@@ -172,36 +176,21 @@ class _PromotionFormDialogState extends State<PromotionFormDialog> {
                 : (value) => setState(() => _status = value!),
           ),
           const SizedBox(height: 18),
-          DropdownButtonFormField<String>(
-            key: const Key('promotion-image'),
-            initialValue: _image,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Imagen de la campaña',
-            ),
-            items: [
-              const DropdownMenuItem(
-                value: '',
-                child: Text('Icono de promoción'),
-              ),
-              for (final entry in PromotionImages.values.entries)
-                DropdownMenuItem(
-                  value: entry.key,
-                  child: Text(entry.value.name),
-                ),
-              for (final image in ProductIllustrations.values)
-                DropdownMenuItem(
-                  value: image.key,
-                  child: Text(image.name, overflow: TextOverflow.ellipsis),
-                ),
-            ],
-            onChanged: _saving
-                ? null
-                : (value) => setState(() => _image = value!),
+          DraftPhotoActions(
+            id: 'promotion-photo',
+            kind: LocalImageKind.promotion,
+            photo: _photo,
+            hasAsset: _image.isNotEmpty,
+            enabled: !_saving,
+            onBusyChanged: (busy) => setState(() => _editingPhoto = busy),
+            onChanged: (photo) => setState(() {
+              _photo = photo;
+              _image = '';
+            }),
           ),
           const SizedBox(height: 18),
-          if (_image.isNotEmpty) ...[
-            PromotionArtwork(imageKey: _image, height: 140),
+          if (_image.isNotEmpty || _photo.isNotEmpty) ...[
+            PromotionArtwork(imageKey: _image, photoData: _photo, height: 140),
             const SizedBox(height: 18),
           ],
           TextFormField(

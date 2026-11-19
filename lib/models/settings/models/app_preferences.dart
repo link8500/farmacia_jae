@@ -26,10 +26,19 @@ enum CatalogLayout { cards, list }
 
 enum WorkspaceDensity { comfortable, compact }
 
+enum WorkspaceColorFilter {
+  none('Sin filtro'),
+  grayscale('Escala de grises'),
+  warm('Cálido');
+
+  const WorkspaceColorFilter(this.label);
+  final String label;
+}
+
 /// Preferencias personales de una cuenta en este navegador, sin sesión ni stock.
 class AppPreferences {
   const AppPreferences({
-    this.themeMode = ThemeMode.system,
+    this.themeMode = ThemeMode.light,
     this.textSize = AppTextSize.standard,
     this.reduceMotion = false,
     this.confirmClearSale = true,
@@ -38,6 +47,7 @@ class AppPreferences {
     this.catalogLayout = CatalogLayout.cards,
     this.density = WorkspaceDensity.comfortable,
     this.highContrast = false,
+    this.colorFilter = WorkspaceColorFilter.none,
   });
   final ThemeMode themeMode;
   final AppTextSize textSize;
@@ -48,6 +58,7 @@ class AppPreferences {
   final CatalogLayout catalogLayout;
   final WorkspaceDensity density;
   final bool highContrast;
+  final WorkspaceColorFilter colorFilter;
 
   AppPreferences copyWith({
     ThemeMode? themeMode,
@@ -59,6 +70,7 @@ class AppPreferences {
     CatalogLayout? catalogLayout,
     WorkspaceDensity? density,
     bool? highContrast,
+    WorkspaceColorFilter? colorFilter,
   }) => AppPreferences(
     themeMode: themeMode ?? this.themeMode,
     textSize: textSize ?? this.textSize,
@@ -70,10 +82,11 @@ class AppPreferences {
     catalogLayout: catalogLayout ?? this.catalogLayout,
     density: density ?? this.density,
     highContrast: highContrast ?? this.highContrast,
+    colorFilter: colorFilter ?? this.colorFilter,
   );
 
   Map<String, Object> toJson() => {
-    'version': 1,
+    'version': 2,
     'themeMode': themeMode.name,
     'textSize': textSize.name,
     'reduceMotion': reduceMotion,
@@ -83,16 +96,23 @@ class AppPreferences {
     'catalogLayout': catalogLayout.name,
     'density': density.name,
     'highContrast': highContrast,
+    'colorFilter': colorFilter.name,
   };
 
   /// Datos locales corruptos/desconocidos no impiden entrar a la aplicación.
   factory AppPreferences.fromJson(Map<String, dynamic> json) {
-    if (json['version'] != 1) return const AppPreferences();
+    final version = json['version'];
+    if (version != 1 && version != 2) return const AppPreferences();
+    // En v1 "system" también se guardaba al cambiar ajustes ajenos al tema.
+    // El nuevo valor inicial es claro. Una elección de sistema en v2 sí persiste.
+    final themeMode = version == 1 && json['themeMode'] == 'system'
+        ? ThemeMode.light
+        : ThemeMode.values.firstWhere(
+            (mode) => mode.name == json['themeMode'],
+            orElse: () => ThemeMode.light,
+          );
     return AppPreferences(
-      themeMode: ThemeMode.values.firstWhere(
-        (mode) => mode.name == json['themeMode'],
-        orElse: () => ThemeMode.system,
-      ),
+      themeMode: themeMode,
       textSize: AppTextSize.values.firstWhere(
         (size) => size.name == json['textSize'],
         orElse: () => AppTextSize.standard,
@@ -121,6 +141,10 @@ class AppPreferences {
       highContrast: json['highContrast'] is bool
           ? json['highContrast'] as bool
           : false,
+      colorFilter: WorkspaceColorFilter.values.firstWhere(
+        (filter) => filter.name == json['colorFilter'],
+        orElse: () => WorkspaceColorFilter.none,
+      ),
     );
   }
 }

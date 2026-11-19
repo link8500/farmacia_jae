@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:farmacia_sae/core/services/pharmacy_controller.dart';
 import 'package:farmacia_sae/models/contacts/models/contact.dart';
 import 'package:farmacia_sae/models/purchases/widgets/purchase_dialogs.dart';
+import 'package:farmacia_sae/models/purchases/models/purchase_order.dart';
+import 'package:farmacia_sae/models/purchases/views/purchase_details_page.dart';
+import 'package:farmacia_sae/models/products/views/product_details_page.dart';
 import 'package:farmacia_sae/models/sales/models/sale_receipt.dart';
 import 'package:farmacia_sae/models/inventory/views/lot_details_page.dart';
 import 'package:farmacia_sae/shared/themes/app_theme.dart';
@@ -122,12 +125,13 @@ void main() {
         );
         await tester.tap(find.text('Recibir compra'));
         await tester.pumpAndSettle();
+        const leaflet = 'Texto del prospecto recibido en esta compra.';
         for (final field in {
           'batch-$id': 'FAB-250-A',
           'manufactured-$id': '2026-07-01',
           'expiry-$id': '2027-11-04',
           'location-$id': 'Estante A · Nivel 2',
-          'price-$id': '2.50',
+          'manufacturer-indications-$id': leaflet,
         }.entries) {
           final finder = find.byKey(Key(field.key));
           await tester.ensureVisible(finder);
@@ -140,6 +144,38 @@ void main() {
         expect(data.lots.single.quantity, 30);
         expect(data.lots.single.location, 'Estante A · Nivel 2');
         expect(data.lots.single.supplierId, data.contacts.first.id);
+        expect(data.products.single.price, 0);
+        expect(data.products.single.indications, isEmpty);
+        expect(data.purchases.single.manufacturerIndications, {id: leaflet});
+        final purchaseId = data.purchases.single.id;
+        await mountAction(
+          (_) => PurchaseDetailsPage(
+            controller: data,
+            purchaseId: purchaseId,
+            onBack: () {},
+          ),
+          'purchase-details',
+        );
+        final indications = find.byType(ExpansionTile);
+        await tester.ensureVisible(indications);
+        await tester.tap(indications);
+        await tester.pumpAndSettle();
+        expect(find.text(leaflet), findsOneWidget);
+        expect(data.addToCart(data.products.single), isFalse);
+        await mountAction(
+          (_) => ProductDetailsPage(
+            controller: data,
+            productId: id,
+            onBack: () {},
+            onLots: () {},
+          ),
+          'price',
+        );
+        await tester.tap(find.text('Definir precio'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('sale-price')), '2.50');
+        await tester.tap(find.text('Guardar'));
+        await tester.pumpAndSettle();
         expect(data.products.single.price, 2.5);
         expect(data.addToCart(data.products.single), isTrue);
         expect(
@@ -162,9 +198,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Editar trazabilidad'));
+        expect(find.text('Completar trazabilidad'), findsNothing);
+        await tester.tap(find.text('Ubicar lote'));
         await tester.pumpAndSettle();
-        final location = find.byKey(const Key('lot-detail-location'));
+        final location = find.byKey(const Key('lot-new-location'));
         await tester.ensureVisible(location);
         await tester.enterText(location, 'Estante B · Nivel 3');
         await tester.pumpAndSettle();
@@ -173,6 +210,53 @@ void main() {
         expect(data.lots.single.location, 'Estante B · Nivel 3');
         expect(data.lots.single.quantity, 29);
         expect(data.sales.single.total, 2.5);
+        expect(
+          data.createPurchase(data.contacts.first.id, [
+            PurchaseLine(
+              productId: id,
+              productName: '',
+              quantity: 3,
+              unitCost: 1.2,
+            ),
+          ]),
+          isNull,
+        );
+        await mountAction(
+          (context) => TextButton(
+            onPressed: () =>
+                receivePurchaseDialog(context, data, data.purchases.last),
+            child: const Text('Recibir otra compra'),
+          ),
+          'receive-again',
+        );
+        await tester.tap(find.text('Recibir otra compra'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(Key('batch-$id')), ' fab-250-a ');
+        await tester.pumpAndSettle();
+        for (final entry in {
+          'manufactured-$id': '2026-07-01',
+          'expiry-$id': '2027-11-04',
+          'location-$id': 'Estante B · Nivel 3',
+        }.entries) {
+          final field = tester.widget<TextFormField>(
+            find.byKey(Key(entry.key)),
+          );
+          expect(field.controller!.text, entry.value);
+        }
+        await tester.tap(find.text('Confirmar recepción'));
+        await tester.pumpAndSettle();
+        expect(data.lots.single.quantity, 32);
+        expect(data.purchases.first.receivedLots.single.quantity, 30);
+        expect(data.purchases.first.manufacturerIndications, {id: leaflet});
+        expect(data.purchases.last.manufacturerIndications, isEmpty);
+        final restored = PharmacyController(seedDemo: false);
+        addTearDown(restored.dispose);
+        expect(restored.restoreBackup(data.createBackup()), isNull);
+        expect(restored.purchases.first.manufacturerIndications, {id: leaflet});
+        expect(
+          data.purchases.last.receivedLots.single.lotId,
+          data.lots.single.id,
+        );
         expect(tester.takeException(), isNull);
       },
     );

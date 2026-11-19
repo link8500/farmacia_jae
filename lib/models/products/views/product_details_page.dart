@@ -60,11 +60,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           selected: _tab,
           onSelected: (i) => setState(() => _tab = i),
         ),
-        media: ProductThumbnail(
-          illustrationKey: p.illustrationKey,
-          height: 150,
-          showCaption: true,
-        ),
+        media: ProductThumbnail.forProduct(p, height: 150, showCaption: true),
         onBack: onBack,
         actions: [
           if (controller.isAdministrator &&
@@ -75,7 +71,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 builder: (_) => RecordFormDialog(
                   title: 'Precio unitario de venta',
                   description:
-                      'Precio por ${p.unit}. Envase: ${p.presentation} (${p.packageUnits} unidades de venta). Se aplica a ventas nuevas.',
+                      'Precio por ${p.unit}. Cada envase equivale a ${p.packageUnits} unidades de venta. Se aplica a ventas nuevas.',
                   fields: [
                     RecordField(
                       'sale-price',
@@ -123,7 +119,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               'Precio por ${p.unit}',
               p.price > 0 ? formatCordobas(p.price) : 'Pendiente de definir',
             ),
-            ('Unidades por envase', '${p.packageUnits} ${p.unit}'),
+            ('Unidades de venta por envase', '${p.packageUnits}'),
             ('Mínimo', '${p.minimum} ${p.unit}'),
             ('Código de barras', p.barcode),
             ('Estado', p.active ? 'Activo' : 'Archivado'),
@@ -131,15 +127,12 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           if (_tab == 1) ...[
             ('Concentración / dosis', p.dosage),
             ('Unidad de medida', p.measurementUnit),
-            ('Origen', p.origin),
-            ('Laboratorio / fabricante', p.manufacturer),
             (
               'Dispensación',
               p.requiresPrescription ? 'Bajo receta' : 'Sin receta',
             ),
             ('Principio activo', p.activeIngredient),
             ('Descripción', p.description),
-            ('Indicaciones del fabricante', p.indications),
             ('Contraindicaciones / advertencias', p.contraindications),
           ],
         ],

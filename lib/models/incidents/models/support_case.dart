@@ -9,11 +9,13 @@ class SupportCase {
     required this.description,
     required this.priority,
     required this.createdAt,
+    this.requestedBy = '',
     this.status = IncidentStatus.open,
     this.resolvedAt,
     this.resolution = '',
   });
   final String id, title, description, priority, resolution;
+  final String requestedBy;
   final DateTime createdAt;
   final DateTime? resolvedAt;
   final IncidentStatus status;
@@ -30,6 +32,7 @@ class SupportCase {
     description: description,
     priority: priority,
     createdAt: createdAt,
+    requestedBy: requestedBy,
     status: status,
     resolution: resolution,
     resolvedAt: status == IncidentStatus.resolved ? resolvedAt ?? now : null,
@@ -40,6 +43,7 @@ class SupportCase {
     'description': description,
     'priority': priority,
     'createdAt': createdAt.toIso8601String(),
+    'requestedBy': requestedBy,
     'status': status.name,
     'resolvedAt': resolvedAt?.toIso8601String(),
     'resolution': resolution,
@@ -50,6 +54,7 @@ class SupportCase {
     description: jsonText(j, 'description'),
     priority: jsonText(j, 'priority'),
     createdAt: jsonDate(j, 'createdAt'),
+    requestedBy: jsonText(j, 'requestedBy', fallback: ''),
     status: jsonEnum(j, 'status', IncidentStatus.values),
     resolvedAt: j['resolvedAt'] == null ? null : jsonDate(j, 'resolvedAt'),
     resolution: jsonText(j, 'resolution'),

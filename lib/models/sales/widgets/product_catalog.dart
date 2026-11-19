@@ -415,8 +415,8 @@ class _ProductTile extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ProductThumbnail(
-                            illustrationKey: product.illustrationKey,
+                          ProductThumbnail.forProduct(
+                            product,
                             width: 68,
                             height: 68,
                           ),
@@ -461,8 +461,8 @@ class _ProductTile extends StatelessWidget {
                     children: [
                       // La foto es orientativa; código, nombre y presentación
                       // permanecen visibles como identificación del artículo.
-                      ProductThumbnail(
-                        illustrationKey: product.illustrationKey,
+                      ProductThumbnail.forProduct(
+                        product,
                         height: compact ? 108 : 128,
                         showCaption: true,
                       ),

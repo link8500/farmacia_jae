@@ -46,7 +46,7 @@ void main() {
       prefs.setDensity(WorkspaceDensity.compact);
       prefs.setHighContrast(true);
       prefs.useAccount('empleado');
-      expect(prefs.value.themeMode, ThemeMode.system);
+      expect(prefs.value.themeMode, ThemeMode.light);
       expect(prefs.value.accent, AppAccent.blue);
       prefs.setThemeMode(ThemeMode.light);
       prefs.setCatalogLayout(CatalogLayout.list);
@@ -67,7 +67,7 @@ void main() {
       clone.useAccount('admin');
       expect(clone.value.themeMode, ThemeMode.dark);
       clone.useAccount(null);
-      expect(clone.value.themeMode, ThemeMode.system);
+      expect(clone.value.themeMode, ThemeMode.light);
       expect(clone.accountId, isNull);
       await clone.flush();
       expect(jsonDecode(store.data!)['profiles'].keys.toSet(), {
@@ -130,17 +130,28 @@ void main() {
     'preferencias globales v1 se migran al login, sin atribuirlas a una cuenta',
     () async {
       final prefs = PreferencesController(
-        MemoryPreferencesStore(
-          jsonEncode(const AppPreferences(themeMode: ThemeMode.dark).toJson()),
-        ),
+        MemoryPreferencesStore(jsonEncode({'version': 1, 'themeMode': 'dark'})),
       );
       addTearDown(prefs.dispose);
       await prefs.initialize();
       expect(prefs.value.themeMode, ThemeMode.dark);
       prefs.useAccount('admin');
-      expect(prefs.value.themeMode, ThemeMode.system);
+      expect(prefs.value.themeMode, ThemeMode.light);
     },
   );
+  test('tema implícito v1 pasa a claro y Sistema v2 se conserva', () {
+    expect(
+      AppPreferences.fromJson({'version': 1, 'themeMode': 'system'}).themeMode,
+      ThemeMode.light,
+    );
+    expect(
+      AppPreferences.fromJson(
+        const AppPreferences(themeMode: ThemeMode.system).toJson(),
+      ).themeMode,
+      ThemeMode.system,
+    );
+  });
+
   test('acentos, contraste reforzado y densidad tienen efecto en el tema', () {
     for (final brightness in Brightness.values) {
       for (final accent in AppAccent.values) {
@@ -175,7 +186,7 @@ void main() {
     ]) {
       final prefs = PreferencesController(MemoryPreferencesStore(raw));
       await prefs.initialize();
-      expect(prefs.value.themeMode, ThemeMode.system);
+      expect(prefs.value.themeMode, ThemeMode.light);
       expect(prefs.value.textSize, AppTextSize.standard);
       expect(prefs.value.confirmClearSale, isTrue);
       expect(prefs.isLoaded, isTrue);
@@ -194,6 +205,7 @@ void main() {
       prefs.setReduceMotion(true);
       prefs.setConfirmClearSale(false);
       prefs.setNotificationBadges(false);
+      prefs.setColorFilter(WorkspaceColorFilter.grayscale);
       await prefs.flush();
       final loaded = PreferencesController(store);
       await loaded.initialize();
@@ -202,6 +214,7 @@ void main() {
       expect(loaded.value.reduceMotion, isTrue);
       expect(loaded.value.confirmClearSale, isFalse);
       expect(loaded.value.showNotificationBadges, isFalse);
+      expect(loaded.value.colorFilter, WorkspaceColorFilter.grayscale);
       final json = jsonDecode(store.data!) as Map<String, dynamic>;
       final saved = json['profiles']['guest'] as Map;
       expect(saved.keys.toSet(), {
@@ -215,6 +228,7 @@ void main() {
         'catalogLayout',
         'density',
         'highContrast',
+        'colorFilter',
       });
       prefs.dispose();
       loaded.dispose();
@@ -254,7 +268,7 @@ void main() {
       final loading = prefs.initialize();
       prefs.setThemeMode(ThemeMode.dark);
       store.readResult.complete(
-        jsonEncode(const AppPreferences(themeMode: ThemeMode.light).toJson()),
+        jsonEncode({'version': 1, 'themeMode': 'light'}),
       );
       await loading;
       expect(prefs.value.themeMode, ThemeMode.dark);
@@ -289,7 +303,7 @@ void main() {
     prefs.setReduceMotion(true);
     prefs.restoreDefaults();
     await prefs.flush();
-    expect(prefs.value.themeMode, ThemeMode.system);
+    expect(prefs.value.themeMode, ThemeMode.light);
     expect(prefs.value.reduceMotion, isFalse);
     expect(prefs.value.confirmClearSale, isTrue);
     expect(jsonDecode(store.data!)['version'], 2);

@@ -257,6 +257,7 @@ class PharmacyDemoScenario {
         );
         final orderId = _id('purchase');
         final lines = <PurchaseLine>[];
+        final receivedLots = <LotAllocation>[];
         for (final product in selected) {
           final quantity =
               requests.fold<int>(
@@ -301,6 +302,7 @@ class PharmacyDemoScenario {
             unitCost: unitCost,
           );
           _lots[id] = lot;
+          receivedLots.add(LotAllocation(lotId: id, quantity: quantity));
           _movement(lot, quantity, receiptAt, 'Recepción de compra $orderId');
         }
         final paid = (monthIndex + group + branchIndex) % 3 != 0;
@@ -316,6 +318,7 @@ class PharmacyDemoScenario {
             paidAt: paid ? receiptAt : null,
             paymentMethod: paid ? 'Transferencia' : '',
             lines: lines,
+            receivedLots: List.unmodifiable(receivedLots),
           ),
         );
         _event(

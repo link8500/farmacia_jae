@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../themes/app_palette.dart';
+import 'section_card.dart';
 
 /// Tarjeta de indicador reutilizable para dashboards y reportes.
 class StatCard extends StatelessWidget {
@@ -40,60 +41,50 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 35,
-                    height: 35,
-                    decoration: BoxDecoration(
-                      color: background,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: color, size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        detail,
-                        maxLines: 2,
-                        textAlign: TextAlign.right,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: detail.contains('%')
-                              ? AppColors.green
-                              : context.palette.muted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+      child: SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 17),
-              Text(
-                label,
-                style: TextStyle(color: context.palette.muted, fontSize: 12),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                value,
-                style: TextStyle(
-                  color: context.palette.ink,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: TextStyle(
+                color: context.palette.ink,
+                fontSize: 24,
+                letterSpacing: -.5,
+                fontWeight: FontWeight.w800,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              detail,
+              style: TextStyle(color: context.palette.muted, fontSize: 11),
+            ),
+          ],
         ),
       ),
     );

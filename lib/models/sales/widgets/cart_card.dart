@@ -86,8 +86,8 @@ class CartCard extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ProductThumbnail(
-                                illustrationKey: line.product.illustrationKey,
+                              ProductThumbnail.forProduct(
+                                line.product,
                                 width: 36,
                                 height: 36,
                               ),

@@ -181,22 +181,25 @@ void main() {
     expect(() => controller.cart.clear(), throwsUnsupportedError);
   });
 
-  test(
-    'catálogo de módulos cubre cada ruta una vez y agrupa el abastecimiento',
-    () {
-      final indices =
-          adminModules
-              .expand((module) => module.items)
-              .map((item) => item.index)
-              .toList()
-            ..sort();
-      expect(indices, AppPaths.enabledSectionIndices);
-      final supply = adminModules.singleWhere(
-        (module) => module.id == 'abastecimiento',
-      );
-      expect(supply.items.map((item) => item.index), [10, 2, 3, 4]);
-    },
-  );
+  test('el menú cubre las vistas principales y agrupa el abastecimiento', () {
+    final indices =
+        adminModules
+            .expand((module) => module.items)
+            .map((item) => item.index)
+            .toList()
+          ..sort();
+    final destinations =
+        AppPaths.enabledSectionIndices
+            .map(AppPaths.sidebarSection)
+            .toSet()
+            .toList()
+          ..sort();
+    expect(indices, destinations);
+    final supply = adminModules.singleWhere(
+      (module) => module.id == 'abastecimiento',
+    );
+    expect(supply.items.map((item) => item.index), [10, 2, 3, 4]);
+  });
 
   test(
     'fechas imposibles, fracciones de unidades y precios inválidos se rechazan',

@@ -14,6 +14,8 @@ import 'package:farmacia_sae/models/presentation/views/presentation_page.dart';
 import 'package:farmacia_sae/models/settings/models/app_preferences.dart';
 import 'package:farmacia_sae/models/settings/views/settings_page.dart';
 import 'package:farmacia_sae/shared/themes/app_theme.dart';
+import 'package:farmacia_sae/shared/themes/workspace_color_filter.dart';
+import 'package:farmacia_sae/shared/widgets/form_dialog.dart';
 
 Future<AuthController> signedIn(WidgetTester tester) async {
   final auth = AuthController();
@@ -58,7 +60,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Restablecer').last);
       await tester.pumpAndSettle();
-      expect(prefs.value.themeMode, ThemeMode.system);
+      expect(prefs.value.themeMode, ThemeMode.light);
     },
   );
 
@@ -94,7 +96,7 @@ void main() {
   );
 
   testWidgets(
-    'tema del sistema responde cuando cambia el brillo del dispositivo',
+    'blanco inicial y tema del sistema en vivo también en un diálogo',
     (tester) async {
       final prefs = PreferencesController(MemoryPreferencesStore());
       await prefs.initialize();
@@ -114,14 +116,51 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byType(SettingsPage))).brightness,
+        Brightness.light,
+      );
+      expect(
+        Theme.of(
+          tester.element(find.byType(SettingsPage)),
+        ).scaffoldBackgroundColor,
+        Colors.white,
+      );
+
+      await tester.ensureVisible(find.byKey(const Key('theme-system')));
+      await tester.tap(find.byKey(const Key('theme-system')));
+      await tester.pumpAndSettle();
+      expect(
+        Theme.of(tester.element(find.byType(SettingsPage))).brightness,
         Brightness.dark,
       );
+
+      final preview = find.text('Vista previa');
+      await tester.ensureVisible(preview);
+      await tester.pumpAndSettle();
+      await tester.tap(preview);
+      await tester.pumpAndSettle();
+      final dialog = find.byType(FormDialog);
+      expect(Theme.of(tester.element(dialog)).brightness, Brightness.dark);
+      prefs.setTextSize(AppTextSize.large);
+      prefs.setColorFilter(WorkspaceColorFilter.warm);
+      await tester.pumpAndSettle();
+      expect(MediaQuery.textScalerOf(tester.element(dialog)).scale(1), 1.1);
+      final filter = find.ancestor(
+        of: dialog,
+        matching: find.byType(ColorFiltered),
+      );
+      expect(
+        tester.widget<ColorFiltered>(filter).colorFilter,
+        WorkspaceColorFilter.warm.colorFilter,
+      );
+
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
       await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byType(SettingsPage))).brightness,
         Brightness.light,
       );
+      expect(Theme.of(tester.element(dialog)).brightness, Brightness.light);
+      expect(tester.takeException(), isNull);
     },
   );
 

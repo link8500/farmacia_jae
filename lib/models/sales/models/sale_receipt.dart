@@ -1,4 +1,7 @@
 import '../../../core/utils/json_value.dart';
+import '../../inventory/models/lot_allocation.dart';
+
+export '../../inventory/models/lot_allocation.dart';
 
 enum PaymentMethod {
   cash('Efectivo'),
@@ -7,17 +10,6 @@ enum PaymentMethod {
 
   const PaymentMethod(this.label);
   final String label;
-}
-
-class LotAllocation {
-  const LotAllocation({required this.lotId, required this.quantity});
-  final String lotId;
-  final int quantity;
-  Map<String, Object> toJson() => {'lotId': lotId, 'quantity': quantity};
-  factory LotAllocation.fromJson(JsonMap j) => LotAllocation(
-    lotId: jsonText(j, 'lotId'),
-    quantity: jsonInteger(j, 'quantity'),
-  );
 }
 
 /// Captura nombre, precio y unidad al vender: editar la ficha no altera facturas.

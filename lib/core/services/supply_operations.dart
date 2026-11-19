@@ -3,6 +3,83 @@ part of 'pharmacy_controller.dart';
 /// Catálogo comercial N:M y valoración. La ficha, el proveedor y el lote tienen
 /// identidades separadas; el historial no cambia al actualizar una referencia.
 extension SupplyOperations on PharmacyController {
+  List<String> classificationOptions(ProductClassification type) => [
+    for (final name in type.defaults)
+      if (!_removedDefaultClassifications.contains((type, name))) name,
+    for (final (kind, name) in _customClassifications)
+      if (kind == type) name,
+  ];
+
+  /// Cambia las fichas vinculadas al renombrar. Las órdenes conservan su copia histórica.
+  String? saveClassificationOption(
+    ProductClassification type,
+    String input, {
+    String? previous,
+  }) {
+    final denied = _permissionError(administrator: true);
+    if (denied != null) return denied;
+    final name = ProductClassification.clean(input);
+    if (!ProductClassification.validName(name)) {
+      return 'Escribe un nombre de 1 a 64 caracteres.';
+    }
+    final options = classificationOptions(type);
+    if (previous != null && !options.contains(previous)) {
+      return 'Esta opción ya no está disponible en el catálogo.';
+    }
+    if (options.any(
+      (item) => item != previous && item.toLowerCase() == name.toLowerCase(),
+    )) {
+      return 'Ya existe esa opción en ${type.plural.toLowerCase()}.';
+    }
+    if (previous == name) return null;
+    if (previous != null) {
+      _removeClassificationOption(type, previous);
+      for (var index = 0; index < _products.length; index++) {
+        final product = _products[index];
+        if (_usesClassification(product, type, previous)) {
+          _products[index] = product.withClassification(type, name);
+        }
+      }
+    }
+    if (type.defaults.contains(name)) {
+      _removedDefaultClassifications.remove((type, name));
+    } else {
+      _customClassifications.add((type, name));
+    }
+    _commit('Catálogo de productos actualizado', '${type.label} · $name');
+    return null;
+  }
+
+  String? deleteClassificationOption(ProductClassification type, String name) {
+    final denied = _permissionError(administrator: true);
+    if (denied != null) return denied;
+    if (!classificationOptions(type).contains(name)) {
+      return 'Esta opción ya no está disponible en el catálogo.';
+    }
+    if (_products.any((product) => _usesClassification(product, type, name))) {
+      return 'Hay productos que usan «$name». Asígnales otra opción antes de eliminarla.';
+    }
+    _removeClassificationOption(type, name);
+    _commit('Opción de catálogo eliminada', '${type.label} · $name');
+    return null;
+  }
+
+  bool _usesClassification(
+    Product product,
+    ProductClassification type,
+    String name,
+  ) =>
+      ProductClassification.clean(product.classification(type)).toLowerCase() ==
+      name.toLowerCase();
+
+  void _removeClassificationOption(ProductClassification type, String name) {
+    if (type.defaults.contains(name)) {
+      _removedDefaultClassifications.add((type, name));
+    } else {
+      _customClassifications.remove((type, name));
+    }
+  }
+
   List<ProductSupplier> get productSuppliers =>
       isAdministrator ? List.unmodifiable(_productSuppliers) : const [];
 
@@ -24,6 +101,20 @@ extension SupplyOperations on PharmacyController {
       productSuppliers
           .where((r) => r.productId == productId && r.supplierId == supplierId)
           .firstOrNull;
+
+  /// Consulta únicamente lotes del mismo producto, proveedor y sucursal.
+  InventoryLot? supplierLot(String productId, String supplierId, String code) {
+    if (!isAdministrator) return null;
+    final normalized = code.trim().toUpperCase();
+    return lots
+        .where(
+          (lot) =>
+              lot.productId == productId &&
+              lot.supplierId == supplierId &&
+              lot.code.toUpperCase() == normalized,
+        )
+        .firstOrNull;
+  }
 
   String? saveProductSupplier({
     required String productId,
@@ -113,6 +204,10 @@ extension SupplyOperations on PharmacyController {
         (supplier?.active != true && supplierId != lot.supplierId) ||
         location.trim().isEmpty) {
       return 'Selecciona proveedor y ubicación válidos para el lote de esta sucursal.';
+    }
+    if (lot.supplierId != supplierId &&
+        _purchases.any((p) => p.receivedLots.any((l) => l.lotId == lot.id))) {
+      return 'El proveedor de este lote corresponde a su orden de compra.';
     }
     final date = InventoryLot.dayOnly(manufacturedAt);
     if (date.isAfter(InventoryLot.dayOnly(lot.receivedAt)) ||

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/local_image_data.dart';
 import '../../../shared/themes/app_palette.dart';
+import '../../../shared/widgets/stored_photo.dart';
+import '../models/product.dart';
 import '../models/product_illustration.dart';
 
 /// Miniatura reutilizable en ficha, formulario y facturación. Mantiene el
@@ -9,13 +12,24 @@ import '../models/product_illustration.dart';
 class ProductThumbnail extends StatelessWidget {
   const ProductThumbnail({
     required this.illustrationKey,
+    this.photoData = '',
     this.width,
     this.height = 110,
     this.showCaption = false,
     super.key,
   });
 
+  ProductThumbnail.forProduct(
+    Product? product, {
+    this.width,
+    this.height = 110,
+    this.showCaption = false,
+    super.key,
+  }) : illustrationKey = product?.illustrationKey ?? '',
+       photoData = product?.photoData ?? '';
+
   final String illustrationKey;
+  final String photoData;
   final double? width;
   final double height;
   final bool showCaption;
@@ -23,7 +37,10 @@ class ProductThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = ProductIllustrations.find(illustrationKey);
-    final label = image?.name ?? 'Sin imagen de producto';
+    final hasPhoto = photoData.isNotEmpty;
+    final label = hasPhoto
+        ? 'Foto del producto'
+        : image?.name ?? 'Sin imagen de producto';
     final fallback = Center(
       child: Icon(
         Icons.medication_outlined,
@@ -51,7 +68,16 @@ class ProductThumbnail extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(color: context.palette.border),
                 ),
-                child: image == null
+                child: hasPhoto
+                    ? Padding(
+                        padding: const EdgeInsets.all(5),
+                        child: StoredPhoto(
+                          photo: photoData,
+                          kind: LocalImageKind.product,
+                          fallback: fallback,
+                        ),
+                      )
+                    : image == null
                     ? fallback
                     : Padding(
                         padding: const EdgeInsets.all(5),
@@ -77,7 +103,7 @@ class ProductThumbnail extends StatelessWidget {
                       ),
               ),
               // Las imágenes cargadas se muestran sin etiqueta al pie.
-              if (showCaption && image == null)
+              if (showCaption && image == null && !hasPhoto)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(

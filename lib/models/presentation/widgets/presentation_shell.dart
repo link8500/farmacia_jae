@@ -11,7 +11,7 @@ abstract final class PublicStyle {
   static const links = [
     (AppPaths.presentation, 'Inicio'),
     (AppPaths.presentationAbout, 'Nosotros'),
-    (AppPaths.presentationServices, 'Servicios'),
+    (AppPaths.presentationServices, 'Productos'),
     (AppPaths.publicPromotions, 'Promociones'),
     (AppPaths.presentationContact, 'Contacto'),
   ];

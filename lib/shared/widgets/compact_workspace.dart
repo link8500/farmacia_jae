@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../themes/app_palette.dart';
+import 'page_header.dart';
+import 'section_card.dart';
 
 /// Marco de listas: cabecera y filtros breves, área de trabajo acotada al alto
 /// disponible. El scroll pertenece al listado, no a una página de fichas largas.
@@ -25,55 +27,12 @@ class CompactWorkspace extends StatelessWidget {
         final heading = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LayoutBuilder(
-              builder: (_, header) {
-                final heading = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.palette.muted,
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-                final buttons = Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: actions,
-                );
-                return header.maxWidth >= 760 &&
-                        MediaQuery.textScalerOf(context).scale(1) < 1.4
-                    ? Row(
-                        children: [
-                          Expanded(child: heading),
-                          const SizedBox(width: 16),
-                          buttons,
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          heading,
-                          if (actions.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            buttons,
-                          ],
-                        ],
-                      );
-              },
+            PageHeader(
+              title: title,
+              description: subtitle,
+              action: actions.isEmpty
+                  ? null
+                  : Wrap(spacing: 8, runSpacing: 8, children: actions),
             ),
             if (toolbar != null) ...[const SizedBox(height: 16), toolbar!],
             const SizedBox(height: 14),
@@ -178,13 +137,8 @@ class _CompactRecordsState extends State<CompactRecords> {
           height: desktop
               ? math.min(area.maxHeight, math.max(180, 104 + rows.length * 52))
               : area.maxHeight,
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.palette.surface,
-              border: Border.all(color: context.palette.border),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
+          child: SectionCard(
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -240,7 +194,7 @@ class _CompactRecordsState extends State<CompactRecords> {
                                     dataRowMinHeight: 52,
                                     dataRowMaxHeight: 52,
                                     headingRowColor: WidgetStatePropertyAll(
-                                      context.palette.canvas,
+                                      context.palette.subtle,
                                     ),
                                     dividerThickness: .6,
                                     columns: [

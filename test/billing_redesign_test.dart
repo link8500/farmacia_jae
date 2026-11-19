@@ -108,7 +108,7 @@ void main() {
       await adminLogin;
       await tester.pumpAndSettle();
       expect(prefs.accountId, 'demo-admin');
-      expect(prefs.value.themeMode, ThemeMode.system);
+      expect(prefs.value.themeMode, ThemeMode.light);
       expect(prefs.value.confirmClearSale, isTrue);
       prefs.useAccount('demo-employee');
       expect(prefs.value.themeMode, ThemeMode.dark);

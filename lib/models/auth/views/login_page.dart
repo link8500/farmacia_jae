@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/auth_controller.dart';
 import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/pharmacy_brand.dart';
+import '../../../shared/widgets/section_card.dart';
 
 /// Único acceso al área interna. No incluye registro ni altas de usuarios.
 class LoginPage extends StatefulWidget {
@@ -231,13 +232,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         const SizedBox(height: 30),
-        Container(
+        SectionCard(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.palette.canvas,
-            border: Border.all(color: context.palette.border),
-            borderRadius: BorderRadius.circular(14),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

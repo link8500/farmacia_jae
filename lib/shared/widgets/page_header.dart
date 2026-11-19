@@ -37,15 +37,22 @@ class PageHeader extends StatelessWidget {
               title,
               style: TextStyle(
                 color: context.palette.ink,
-                fontSize: 23,
+                fontSize: 25,
                 fontWeight: FontWeight.w800,
+                letterSpacing: -.55,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              description,
-              style: TextStyle(color: context.palette.muted, fontSize: 13),
-            ),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: TextStyle(
+                  color: context.palette.muted,
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
+            ],
           ],
         );
         final compactAction = action == null

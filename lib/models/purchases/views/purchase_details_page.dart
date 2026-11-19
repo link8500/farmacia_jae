@@ -3,6 +3,7 @@ import '../../../core/services/pharmacy_controller.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/compact_workspace.dart';
 import '../../../shared/widgets/record_detail.dart';
+import '../../../shared/widgets/section_card.dart';
 import '../widgets/purchase_actions.dart';
 import '../../products/widgets/product_thumbnail.dart';
 
@@ -13,13 +14,15 @@ class PurchaseDetailsPage extends StatelessWidget {
     required this.purchaseId,
     required this.onBack,
     this.onProduct,
+    this.onLot,
+    this.onSupplier,
     this.backLabel = 'Volver al listado',
     super.key,
   });
   final PharmacyController controller;
   final String purchaseId;
   final VoidCallback onBack;
-  final ValueChanged<String>? onProduct;
+  final ValueChanged<String>? onProduct, onLot, onSupplier;
   final String backLabel;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -35,17 +38,26 @@ class PurchaseDetailsPage extends StatelessWidget {
           fields: const [],
         );
       }
+      final supplier = controller.contactById(order.supplierId);
+      final lots = {for (final lot in controller.lots) lot.id: lot};
       return RecordDetail(
         title: order.id,
         subtitle: 'Detalle de compra',
         onBack: onBack,
         backLabel: backLabel,
         actions: [
+          if (supplier != null && onSupplier != null)
+            OutlinedButton(
+              onPressed: () => onSupplier!(supplier.id),
+              child: const Text('Ver proveedor'),
+            ),
           for (final action in purchaseActions(context, controller, order))
             OutlinedButton(onPressed: action.$2, child: Text(action.$1)),
         ],
         fields: [
           ('Proveedor', order.supplierName),
+          if (supplier?.origin.isNotEmpty == true)
+            ('Origen del proveedor', supplier!.origin),
           ('Fecha', formatDate(order.createdAt)),
           ('Estado', purchaseStatusLabel(order.status)),
           ('Total', formatCordobas(order.total)),
@@ -64,6 +76,55 @@ class PurchaseDetailsPage extends StatelessWidget {
           if (order.reason.isNotEmpty) ('Motivo', order.reason),
         ],
         children: [
+          if (order.receivedLots.isNotEmpty) ...[
+            const Text(
+              'Lotes recibidos',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final receipt in order.receivedLots)
+                  if (lots[receipt.lotId] case final lot?)
+                    ActionChip(
+                      avatar: const Icon(Icons.inventory_2_outlined, size: 16),
+                      label: Text(
+                        '${lot.code} · ${receipt.quantity} ud.',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onPressed: onLot == null ? null : () => onLot!(lot.id),
+                    ),
+              ],
+            ),
+          ],
+          if (order.manufacturerIndications.isNotEmpty) ...[
+            const Text(
+              'Indicaciones del fabricante',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            SectionCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (final line in order.lines)
+                    if (order.manufacturerIndications[line.productId]
+                        case final text?)
+                      ExpansionTile(
+                        title: Text(line.productName),
+                        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                        childrenPadding: const EdgeInsets.fromLTRB(
+                          16,
+                          0,
+                          16,
+                          16,
+                        ),
+                        children: [SelectableText(text)],
+                      ),
+                ],
+              ),
+            ),
+          ],
           const Text(
             'Productos de la orden',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -81,10 +142,8 @@ class PurchaseDetailsPage extends StatelessWidget {
               ],
               rowBuilder: (i) {
                 final line = order.lines[i];
-                final picture = ProductThumbnail(
-                  illustrationKey:
-                      controller.productById(line.productId)?.illustrationKey ??
-                      '',
+                final picture = ProductThumbnail.forProduct(
+                  controller.productById(line.productId),
                   width: 36,
                   height: 36,
                 );

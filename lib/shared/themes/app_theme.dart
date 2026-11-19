@@ -40,7 +40,7 @@ abstract final class AppTheme {
     );
     final scheme =
         ColorScheme.fromSeed(
-          seedColor: AppColors.blue,
+          seedColor: palette.blue,
           brightness: brightness,
         ).copyWith(
           primary: palette.blue,
@@ -50,6 +50,8 @@ abstract final class AppTheme {
           primaryContainer: palette.paleBlue,
           onPrimaryContainer: palette.ink,
           surface: palette.surface,
+          surfaceContainer: palette.subtle,
+          surfaceContainerHighest: palette.subtle,
           onSurface: palette.ink,
           onSurfaceVariant: palette.muted,
           outline: palette.border,
@@ -60,10 +62,11 @@ abstract final class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       fontFamily: 'Arial',
+      fontFamilyFallback: const ['Roboto'],
     );
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(9),
           borderSide: BorderSide(color: color, width: width),
         );
     return base.copyWith(
@@ -74,10 +77,8 @@ abstract final class AppTheme {
           : VisualDensity.standard,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          minimumSize: const Size(48, 44),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: base.textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -85,10 +86,10 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          minimumSize: const Size(48, 42),
+          foregroundColor: palette.ink,
+          side: BorderSide(color: palette.border),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -121,11 +122,45 @@ abstract final class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: palette.surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        barrierColor: const Color(0x66101D30),
+        titleTextStyle: base.textTheme.titleLarge?.copyWith(
+          color: palette.ink,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -.25,
+        ),
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
+          color: palette.muted,
+          height: 1.45,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: palette.border),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: palette.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        backgroundColor: palette.surface,
+        selectedColor: palette.paleBlue,
+        side: BorderSide(color: palette.border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: palette.surface,
         surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: palette.border),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

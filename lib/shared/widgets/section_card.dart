@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FCard, FCardStyle;
+
+import '../themes/app_palette.dart';
 
 /// Contenedor visual para agrupar una sección de contenido.
 ///
@@ -9,6 +12,7 @@ class SectionCard extends StatelessWidget {
   const SectionCard({
     required this.child,
     this.padding = const EdgeInsets.all(18),
+    this.radius = 12,
     super.key,
   });
 
@@ -17,11 +21,29 @@ class SectionCard extends StatelessWidget {
 
   /// Espaciado interior personalizable.
   final EdgeInsetsGeometry padding;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(padding: padding, child: child),
+    final theme = Theme.of(context);
+    final palette = context.palette;
+    return FCard(
+      clipBehavior: Clip.antiAlias,
+      style: FCardStyle(
+        decoration: ShapeDecoration(
+          color: palette.surface,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(radius),
+            side: BorderSide(color: palette.border),
+          ),
+        ),
+        titleTextStyle: theme.textTheme.titleMedium!,
+        subtitleTextStyle: theme.textTheme.bodySmall!,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(padding: padding, child: child),
+      ),
     );
   }
 }

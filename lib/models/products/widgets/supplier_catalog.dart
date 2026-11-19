@@ -130,7 +130,9 @@ class SupplierCatalog extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: () => _edit(context),
               icon: const Icon(Icons.link, size: 17),
-              label: const Text('Vincular producto'),
+              label: Text(
+                productId == null ? 'Vincular producto' : 'Vincular proveedor',
+              ),
             ),
           ],
         ),

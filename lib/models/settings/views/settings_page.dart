@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FLucideIcons;
 import '../../../core/services/preferences_controller.dart';
 import '../../../core/services/preferences_store.dart';
 import '../../../shared/themes/app_palette.dart';
@@ -134,10 +135,10 @@ class _SettingsPageState extends State<SettingsPage> {
   );
 
   Widget _appearance(AppPreferences prefs) => PreferencesSection(
-    title: 'Elige cómo quieres trabajar',
+    title: 'Tema y color',
     description:
-        'Tema, color y espaciado del área interna. La presentación pública conserva su diseño.',
-    icon: Icons.palette_outlined,
+        'Personaliza las superficies, la lectura y el espaciado de Administración.',
+    icon: FLucideIcons.slidersHorizontal,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -154,20 +155,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   (
                     ThemeMode.light,
                     'Claro',
-                    'Limpio y luminoso',
-                    Icons.light_mode_outlined,
+                    'Blanco · Predeterminado',
+                    FLucideIcons.sun,
                   ),
                   (
                     ThemeMode.dark,
                     'Oscuro',
-                    'Para ambientes oscuros',
-                    Icons.dark_mode_outlined,
+                    'Superficies oscuras',
+                    FLucideIcons.moon,
                   ),
                   (
                     ThemeMode.system,
                     'Sistema',
-                    'Sigue tu dispositivo',
-                    Icons.brightness_auto_outlined,
+                    MediaQuery.platformBrightnessOf(context) == Brightness.dark
+                        ? 'Dispositivo en oscuro'
+                        : 'Dispositivo en claro',
+                    FLucideIcons.monitor,
                   ),
                 ])
                   SizedBox(
@@ -207,6 +210,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: Text(accent.label),
                 selected: prefs.accent == accent,
                 onSelected: (_) => _preferences.setAccent(accent),
+              ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _label(
+          'Filtro de color',
+          'Ajusta el color de las pantallas, los gráficos y los diálogos.',
+        ),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            for (final filter in WorkspaceColorFilter.values)
+              ChoiceChip(
+                key: Key('color-filter-${filter.name}'),
+                label: Text(filter.label),
+                selected: prefs.colorFilter == filter,
+                onSelected: (_) => _preferences.setColorFilter(filter),
               ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FLucideIcons;
 import '../../../models/auth/models/session_user.dart';
 import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -28,7 +29,7 @@ class TopBar extends StatelessWidget {
     builder: (context, constraints) {
       final showUserName = constraints.maxWidth >= 680;
       return Container(
-        height: 80,
+        height: 72,
         padding: const EdgeInsets.symmetric(horizontal: 30),
         decoration: BoxDecoration(
           color: context.palette.surface,
@@ -36,6 +37,22 @@ class TopBar extends StatelessWidget {
         ),
         child: Row(
           children: [
+            if (constraints.maxWidth >= 460) ...[
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: context.palette.paleBlue,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  FLucideIcons.layoutDashboard,
+                  size: 18,
+                  color: context.palette.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -62,6 +79,17 @@ class TopBar extends StatelessWidget {
                 ],
               ),
             ),
+            if (onPreferences != null)
+              IconButton(
+                tooltip: 'Apariencia',
+                onPressed: onPreferences,
+                icon: Icon(
+                  Theme.brightnessOf(context) == Brightness.dark
+                      ? FLucideIcons.moon
+                      : FLucideIcons.sun,
+                  size: 19,
+                ),
+              ),
             IconButton(
               tooltip: 'Notificaciones',
               onPressed: onNotifications,
@@ -69,10 +97,7 @@ class TopBar extends StatelessWidget {
                 isLabelVisible: showNotificationBadges,
                 smallSize: 7,
                 backgroundColor: AppColors.red,
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  color: context.palette.muted,
-                ),
+                child: Icon(FLucideIcons.bell, color: context.palette.muted),
               ),
             ),
             const SizedBox(width: 15),
@@ -94,7 +119,7 @@ class TopBar extends StatelessWidget {
                   value: 'profile',
                   child: Row(
                     children: [
-                      Icon(Icons.person_outline, size: 18),
+                      Icon(FLucideIcons.circleUser, size: 18),
                       SizedBox(width: 9),
                       Text('Mi perfil'),
                     ],
@@ -105,7 +130,7 @@ class TopBar extends StatelessWidget {
                     value: 'preferences',
                     child: Row(
                       children: [
-                        Icon(Icons.tune_rounded, size: 18),
+                        Icon(FLucideIcons.slidersHorizontal, size: 18),
                         SizedBox(width: 9),
                         Text('Mis preferencias'),
                       ],
@@ -115,15 +140,19 @@ class TopBar extends StatelessWidget {
                   value: 'logout',
                   child: Row(
                     children: [
-                      Icon(Icons.logout, size: 18),
+                      Icon(FLucideIcons.logOut, size: 18),
                       SizedBox(width: 9),
                       Text('Cerrar sesión'),
                     ],
                   ),
                 ),
               ],
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: context.palette.subtle,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -134,12 +163,17 @@ class TopBar extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            user.name,
-                            style: TextStyle(
-                              color: context.palette.ink,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            child: Text(
+                              user.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.palette.ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 3),
@@ -154,7 +188,7 @@ class TopBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Icon(
-                        Icons.keyboard_arrow_down_rounded,
+                        FLucideIcons.chevronDown,
                         size: 17,
                         color: context.palette.muted,
                       ),

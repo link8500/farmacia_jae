@@ -57,6 +57,15 @@ extension AdministrationPersistence on PharmacyController {
     'staff': _staff.map((s) => s.toJson()).toList(),
     'branchProducts': _branchProducts.map((p) => p.toJson()).toList(),
     'productSuppliers': _productSuppliers.map((p) => p.toJson()).toList(),
+    'productClassifications': [
+      for (final (type, name) in _customClassifications)
+        {'type': type.name, 'name': name},
+    ],
+    if (_removedDefaultClassifications.isNotEmpty)
+      'removedDefaultClassifications': [
+        for (final (type, name) in _removedDefaultClassifications)
+          {'type': type.name, 'name': name},
+      ],
     'products': _products.map((p) => p.toJson()).toList(),
     'lots': _lots.map((l) => l.toJson()).toList(),
     'contacts': _contacts.map((c) => c.toJson()).toList(),
@@ -147,6 +156,12 @@ extension AdministrationPersistence on PharmacyController {
     _productSuppliers
       ..clear()
       ..addAll(data.productSuppliers);
+    _customClassifications
+      ..clear()
+      ..addAll(data.customClassifications);
+    _removedDefaultClassifications
+      ..clear()
+      ..addAll(data.removedDefaultClassifications);
     _products
       ..clear()
       ..addAll(data.products);
@@ -214,6 +229,14 @@ class _AdministrationSnapshot {
       productSuppliers = json.containsKey('productSuppliers')
           ? jsonList(json, 'productSuppliers', ProductSupplier.fromJson)
           : _legacySupplierLinks(json),
+      customClassifications = _readClassifications(
+        json,
+        'productClassifications',
+      ),
+      removedDefaultClassifications = _readClassifications(
+        json,
+        'removedDefaultClassifications',
+      ),
       sales = jsonList(json, 'sales', SaleReceipt.fromJson),
       cashSessions = jsonList(json, 'cashSessions', CashSession.fromJson),
       cashMovements = jsonList(json, 'cashMovements', CashMovement.fromJson),
@@ -231,6 +254,22 @@ class _AdministrationSnapshot {
   final List<BranchProduct> branchProducts;
   final List<Product> products;
   final List<ProductSupplier> productSuppliers;
+  final List<(ProductClassification, String)> customClassifications;
+  final List<(ProductClassification, String)> removedDefaultClassifications;
+
+  static List<(ProductClassification, String)> _readClassifications(
+    JsonMap json,
+    String key,
+  ) => json.containsKey(key)
+      ? jsonList(
+          json,
+          key,
+          (item) => (
+            jsonEnum(item, 'type', ProductClassification.values),
+            ProductClassification.clean(jsonText(item, 'name')),
+          ),
+        )
+      : const [];
 
   /// Respaldos antiguos no tenían tabla N:M. Se reconstruye únicamente desde
   /// compras documentadas, sin asignar proveedores supuestos a otros artículos.
@@ -335,6 +374,28 @@ class _AdministrationSnapshot {
     );
     unique(branchProducts.map((p) => '${p.branchId}|${p.productId}'));
     unique(productSuppliers.map((r) => '${r.productId}|${r.supplierId}'));
+    final removed = removedDefaultClassifications.toSet();
+    require(
+      removed.length == removedDefaultClassifications.length &&
+          removed.every((entry) => entry.$1.defaults.contains(entry.$2)),
+      'Opciones preestablecidas eliminadas inválidas.',
+    );
+    for (final type in ProductClassification.values) {
+      final names = {
+        for (final option in type.defaults)
+          if (!removed.contains((type, option))) option.toLowerCase(),
+      };
+      for (final (kind, name) in customClassifications) {
+        if (type == kind) {
+          require(
+            ProductClassification.validName(name) &&
+                !type.defaults.contains(name) &&
+                names.add(name.toLowerCase()),
+            'Opción inválida o duplicada en ${type.plural.toLowerCase()}.',
+          );
+        }
+      }
+    }
     unique(
       contacts
           .where((c) => c.kind == ContactKind.supplier && c.code.isNotEmpty)
@@ -484,6 +545,40 @@ class _AdministrationSnapshot {
         (p.status == PurchaseStatus.received) == (p.receivedAt != null),
         'Estado de recepción incoherente.',
       );
+      for (final entry in p.manufacturerIndications.entries) {
+        require(
+          p.status == PurchaseStatus.received &&
+              p.lines.any((line) => line.productId == entry.key) &&
+              entry.value.trim().isNotEmpty &&
+              entry.value.length <=
+                  PurchaseOrder.maxManufacturerIndicationsLength,
+          'Indicaciones del fabricante sin una línea recibida válida.',
+        );
+      }
+      if (p.receivedLots.isNotEmpty) {
+        require(
+          p.status == PurchaseStatus.received,
+          'Compra con recepción inválida.',
+        );
+        unique(p.receivedLots.map((l) => l.lotId));
+        final remaining = {
+          for (final line in p.lines) line.productId: line.quantity,
+        };
+        for (final received in p.receivedLots) {
+          final lot = lotMap[received.lotId];
+          final expected = remaining[lot?.productId] ?? 0;
+          require(
+            lot != null &&
+                lot.branchId == p.branchId &&
+                lot.supplierId == p.supplierId &&
+                received.quantity > 0 &&
+                received.quantity <= expected,
+            'Lote de compra inválido.',
+          );
+          remaining[lot!.productId] = expected - received.quantity;
+        }
+        require(remaining.values.every((q) => q == 0), 'Recepción incompleta.');
+      }
       require(
         p.paidAt == null || p.status == PurchaseStatus.received,
         'Pago de compra no recibida.',

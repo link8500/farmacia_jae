@@ -1,4 +1,5 @@
 import '../../../core/utils/json_value.dart';
+import '../../../core/utils/local_image_data.dart';
 import '../../products/models/product_illustration.dart';
 import 'promotion_image.dart';
 
@@ -23,11 +24,14 @@ class Promotion {
     this.badge = 'Novedad',
     this.conditions = '',
     this.illustrationKey = '',
+    this.photoData = '',
     this.status = PromotionStatus.draft,
   });
   final String id, title, description, badge, conditions, illustrationKey;
+  final String photoData;
   final DateTime startsAt, endsAt;
   final PromotionStatus status;
+  bool get hasArtwork => photoData.isNotEmpty || illustrationKey.isNotEmpty;
   static DateTime day(DateTime date) =>
       DateTime(date.year, date.month, date.day);
   bool isVisible(DateTime today) =>
@@ -62,6 +66,10 @@ class Promotion {
         ProductIllustrations.find(illustrationKey) == null) {
       return 'Selecciona una ilustración del catálogo local.';
     }
+    if (photoData.isNotEmpty &&
+        LocalImageKind.promotion.decode(photoData) == null) {
+      return 'La foto de la promoción no es válida. Selecciónala y ajusta el encuadre de nuevo.';
+    }
     return null;
   }
 
@@ -74,6 +82,7 @@ class Promotion {
     startsAt: day(startsAt),
     endsAt: day(endsAt),
     illustrationKey: illustrationKey,
+    photoData: photoData,
     status: status ?? this.status,
   );
   Map<String, Object> toJson() => {
@@ -83,6 +92,7 @@ class Promotion {
     'badge': badge,
     'conditions': conditions,
     'illustrationKey': illustrationKey,
+    if (photoData.isNotEmpty) 'photoData': photoData,
     'startsAt': startsAt.toIso8601String(),
     'endsAt': endsAt.toIso8601String(),
     'status': status.name,
@@ -95,6 +105,7 @@ class Promotion {
       badge: jsonText(json, 'badge'),
       conditions: jsonText(json, 'conditions'),
       illustrationKey: jsonText(json, 'illustrationKey'),
+      photoData: jsonText(json, 'photoData', fallback: ''),
       startsAt: jsonDate(json, 'startsAt'),
       endsAt: jsonDate(json, 'endsAt'),
       status: jsonEnum(json, 'status', PromotionStatus.values),

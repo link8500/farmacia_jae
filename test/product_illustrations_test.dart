@@ -429,11 +429,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('product-tab-2')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('product-illustration')));
-    await tester.tap(find.byKey(const Key('product-illustration')));
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.byType(ProductThumbnail), findsOneWidget);
+    final remove = find.byKey(const Key('product-photo-remove'));
+    await tester.ensureVisible(remove);
+    await tester.tap(remove);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sin imagen').last);
-    await tester.pumpAndSettle();
+    expect(find.byType(ProductThumbnail), findsNothing);
     await tester.ensureVisible(find.byKey(const Key('product-save')));
     await tester.tap(find.byKey(const Key('product-save')));
     await tester.pumpAndSettle();

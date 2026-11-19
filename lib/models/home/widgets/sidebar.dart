@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FLucideIcons;
 import '../../../core/routing/app_paths.dart';
 import '../../../models/auth/models/session_user.dart';
 import '../../../shared/themes/app_palette.dart';
@@ -97,7 +98,10 @@ class _SidebarState extends State<Sidebar> {
         .toList();
     return Container(
       width: 248,
-      color: context.palette.surface,
+      decoration: BoxDecoration(
+        color: context.palette.surface,
+        border: Border(right: BorderSide(color: context.palette.border)),
+      ),
       child: SafeArea(
         // El perfil queda al pie con ambos roles. Solo la navegación desplaza
         // el contenido cuando la altura o el tamaño de texto lo requieren.
@@ -150,10 +154,10 @@ class _SidebarState extends State<Sidebar> {
               color: active && !expanded
                   ? context.palette.paleBlue
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(9),
               child: InkWell(
                 onTap: () => _toggleModule(module.id),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(9),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -185,8 +189,8 @@ class _SidebarState extends State<Sidebar> {
                       ),
                       Icon(
                         expanded
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
+                            ? FLucideIcons.chevronUp
+                            : FLucideIcons.chevronDown,
                         color: active
                             ? context.palette.blue
                             : context.palette.muted,
@@ -228,10 +232,10 @@ class _SidebarState extends State<Sidebar> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
       child: Material(
         color: active ? context.palette.paleBlue : Colors.transparent,
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () => widget.onSelect(item.index),
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(42, 9, 12, 9),
             child: Row(
@@ -333,8 +337,9 @@ class _UserCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 18, 16, 20),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: context.palette.paleBlue,
-        borderRadius: BorderRadius.circular(14),
+        color: context.palette.subtle,
+        border: Border.all(color: context.palette.border),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,8 +366,8 @@ class _UserCard extends StatelessWidget {
                       ),
                       Text(
                         user.role.label,
-                        style: const TextStyle(
-                          color: AppColors.green,
+                        style: TextStyle(
+                          color: context.palette.muted,
                           fontSize: 10,
                         ),
                       ),
@@ -375,7 +380,7 @@ class _UserCard extends StatelessWidget {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onLogout,
-            icon: const Icon(Icons.logout_rounded, size: 15),
+            icon: const Icon(FLucideIcons.logOut, size: 15),
             label: const Text('Cerrar sesión', style: TextStyle(fontSize: 11)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(

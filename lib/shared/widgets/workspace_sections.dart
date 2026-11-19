@@ -18,10 +18,13 @@ class WorkspaceTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      border: Border(bottom: BorderSide(color: context.palette.border)),
+      color: context.palette.subtle,
+      border: Border.all(color: context.palette.border),
+      borderRadius: BorderRadius.circular(9),
     ),
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.all(3),
       child: Row(
         children: [
           for (var i = 0; i < labels.length; i++)
@@ -33,17 +36,18 @@ class WorkspaceTabs extends StatelessWidget {
                 onTap: () => onSelected(i),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 12,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        width: 2,
-                        color: selected == i
-                            ? context.palette.blue
-                            : Colors.transparent,
-                      ),
+                    color: selected == i
+                        ? context.palette.surface
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: selected == i
+                          ? context.palette.border
+                          : Colors.transparent,
                     ),
                   ),
                   child: Text(

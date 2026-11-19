@@ -3,10 +3,11 @@ import '../../../core/services/pharmacy_controller.dart';
 import '../../../core/utils/form_validators.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/form_dialog.dart';
-import '../../../shared/widgets/record_form_dialog.dart';
 import '../../contacts/models/contact.dart';
+import '../../products/models/product.dart';
 import '../../products/widgets/product_thumbnail.dart';
 import '../models/purchase_order.dart';
+import 'purchase_receipt_dialog.dart';
 
 /// Compra por medicamento: la búsqueda muestra presentación y concentración,
 /// después filtra proveedores por la tabla comercial N:M.
@@ -37,6 +38,7 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
     setState(() {
       _product = id;
       _packages = false;
+      _allSuppliers = false;
       _error = null;
       final linked = id == null
           ? <Contact>[]
@@ -44,19 +46,32 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
       if (_lines.isEmpty && !linked.any((s) => s.id == _supplier)) {
         _supplier = linked.length == 1 ? linked.single.id : null;
       }
-      final terms = widget.controller.supplierTerms(id ?? '', _supplier ?? '');
-      _cost.text = terms != null && terms.referenceCost > 0
-          ? '${terms.referenceCost}'
-          : '';
+      _loadReferenceCost();
     });
   }
 
+  void _loadReferenceCost() {
+    final terms = widget.controller.supplierTerms(
+      _product ?? '',
+      _supplier ?? '',
+    );
+    final cost = terms?.referenceCost ?? 0;
+    _cost.text = cost > 0 ? '$cost' : '';
+  }
+
+  String _productLabel(Product product) => [
+    product.name,
+    if (product.dosage.isNotEmpty) product.dosage,
+    product.presentation,
+  ].join(' · ');
+
   bool _addLine() {
-    if (!_lineForm.currentState!.validate()) return false;
-    if (_product == null || _supplier == null) {
-      setState(() => _error = 'Selecciona el medicamento y su proveedor.');
+    final p = widget.controller.productById(_product ?? '');
+    if (p == null || _search.text != _productLabel(p)) {
+      setState(() => _error = 'Selecciona un medicamento de los resultados.');
       return false;
     }
+    if (!_lineForm.currentState!.validate() || _supplier == null) return false;
     if (_lines.any((l) => l.productId == _product)) {
       setState(
         () => _error =
@@ -64,7 +79,6 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
       );
       return false;
     }
-    final p = widget.controller.productById(_product!)!;
     final quantity =
         int.parse(_quantity.text.trim()) * (_packages ? p.packageUnits : 1);
     if (quantity > 1000000) {
@@ -96,11 +110,13 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
     final data = widget.controller;
     final p = data.productById(_product ?? '');
     final linked = p == null ? <Contact>[] : data.suppliersForProduct(p.id);
+    final selectedSupplier = data.contactById(_supplier ?? '');
     final suppliers = data.contacts
         .where(
           (c) =>
               c.kind == ContactKind.supplier &&
               c.active &&
+              data.supplierTerms(p?.id ?? '', c.id)?.active != false &&
               (_allSuppliers ||
                   linked.isEmpty ||
                   linked.any((s) => s.id == c.id) ||
@@ -152,13 +168,20 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
                     ),
                     leadingIcon: const Icon(Icons.search),
                     dropdownMenuEntries: [
-                      for (final item in data.products.where((p) => p.active))
+                      for (final item in data.products.where(
+                        (item) =>
+                            item.active &&
+                            (_lines.isEmpty ||
+                                data
+                                        .supplierTerms(item.id, _supplier ?? '')
+                                        ?.active !=
+                                    false),
+                      ))
                         DropdownMenuEntry(
                           value: item.id,
-                          label:
-                              '${item.name} · ${item.dosage} · ${item.presentation}',
+                          label: _productLabel(item),
                           labelWidget: Text(
-                            '${item.name} · ${item.dosage} · ${item.presentation}',
+                            _productLabel(item),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -175,119 +198,125 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
                       style: const TextStyle(fontSize: 12, height: 1.5),
                     ),
                   ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(
-                    'purchase-supplier-${_product ?? ''}-$_allSuppliers-${_lines.isNotEmpty}',
+                if (p != null) ...[
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(
+                      'purchase-supplier-${_product ?? ''}-$_allSuppliers-${_lines.isNotEmpty}',
+                    ),
+                    initialValue: suppliers.any((s) => s.id == _supplier)
+                        ? _supplier
+                        : null,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: linked.isEmpty
+                          ? 'Proveedor de la orden'
+                          : 'Proveedores de este medicamento',
+                    ),
+                    items: [
+                      for (final c in suppliers)
+                        DropdownMenuItem(
+                          value: c.id,
+                          child: Text(
+                            [
+                              c.code,
+                              c.name,
+                              if (c.origin.isNotEmpty) c.origin,
+                            ].join(' · '),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: _lines.isNotEmpty
+                        ? null
+                        : (v) => setState(() {
+                            _supplier = v;
+                            _loadReferenceCost();
+                          }),
+                    validator: requiredText,
                   ),
-                  initialValue: _supplier,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: linked.isEmpty
-                        ? 'Proveedor de la orden'
-                        : 'Proveedores de este medicamento',
-                  ),
-                  items: [
-                    for (final c in suppliers)
-                      DropdownMenuItem(
-                        value: c.id,
-                        child: Text(
-                          '${c.code} · ${c.name}',
-                          overflow: TextOverflow.ellipsis,
+                  if (_lines.isEmpty && linked.isNotEmpty)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text(
+                        'Consultar otros proveedores del directorio',
+                      ),
+                      value: _allSuppliers,
+                      onChanged: (v) => setState(() {
+                        _allSuppliers = v ?? false;
+                        if (!_allSuppliers &&
+                            !linked.any((c) => c.id == _supplier)) {
+                          _supplier = null;
+                          _loadReferenceCost();
+                        }
+                      }),
+                    ),
+                  if (linked.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Sin proveedores vinculados. La primera compra guardará la relación comercial.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  if (_lines.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Proveedor de la orden: ${selectedSupplier?.name ?? ''}. Para comprar a otro proveedor, crea otra orden.',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  const SizedBox(height: 18),
+                  FormFieldsGrid(
+                    fields: [
+                      TextFormField(
+                        key: const Key('purchase-quantity'),
+                        controller: _quantity,
+                        validator: positiveInteger,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: _packages
+                              ? 'Cantidad de envases'
+                              : 'Cantidad (${p.unit})',
                         ),
                       ),
-                  ],
-                  onChanged: _lines.isNotEmpty
-                      ? null
-                      : (v) => setState(() {
-                          _supplier = v;
-                          final t = data.supplierTerms(_product ?? '', v ?? '');
-                          if (t != null && t.referenceCost > 0) {
-                            _cost.text = '${t.referenceCost}';
-                          }
-                        }),
-                  validator: requiredText,
-                ),
-                if (_lines.isEmpty && linked.isNotEmpty)
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    title: const Text(
-                      'Consultar otros proveedores del directorio',
-                    ),
-                    value: _allSuppliers,
-                    onChanged: (v) => setState(() {
-                      _allSuppliers = v ?? false;
-                      if (!_allSuppliers &&
-                          !linked.any((c) => c.id == _supplier)) {
-                        _supplier = null;
-                      }
-                    }),
-                  ),
-                if (p != null && linked.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Sin proveedores vinculados. La primera compra guardará la relación comercial.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                if (_lines.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Una orden corresponde a un proveedor. Para otro proveedor, crea otra orden.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                const SizedBox(height: 18),
-                FormFieldsGrid(
-                  fields: [
-                    TextFormField(
-                      key: const Key('purchase-quantity'),
-                      controller: _quantity,
-                      validator: positiveInteger,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: _packages
-                            ? 'Cantidad de envases'
-                            : 'Cantidad (${p?.unit ?? 'unidades'})',
+                      TextFormField(
+                        key: const Key('purchase-cost'),
+                        controller: _cost,
+                        validator: positiveAmount,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Costo por ${p.unit} (C\$)',
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      key: const Key('purchase-cost'),
-                      controller: _cost,
-                      validator: positiveAmount,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Costo por ${p?.unit ?? 'unidad'} (C\$)',
-                      ),
-                    ),
-                  ],
-                ),
-                if (p != null && p.packageUnits > 1)
-                  SwitchListTile.adaptive(
-                    key: const Key('purchase-packages'),
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Comprar por envases completos'),
-                    subtitle: Text(
-                      'Cada envase suma ${p.packageUnits} ${p.unit}. El costo se captura por unidad.',
-                    ),
-                    value: _packages,
-                    onChanged: (v) => setState(() => _packages = v),
+                    ],
                   ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    key: const Key('purchase-add-line'),
-                    onPressed: _addLine,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Añadir a la orden'),
+                  if (p.packageUnits > 1)
+                    SwitchListTile.adaptive(
+                      key: const Key('purchase-packages'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Comprar por envases completos'),
+                      subtitle: Text(
+                        'Cada envase suma ${p.packageUnits} ${p.unit}. El costo se captura por unidad.',
+                      ),
+                      value: _packages,
+                      onChanged: (v) => setState(() => _packages = v),
+                    ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      key: const Key('purchase-add-line'),
+                      onPressed: _addLine,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Añadir a la orden'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -297,9 +326,8 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  ProductThumbnail(
-                    illustrationKey:
-                        data.productById(line.productId)?.illustrationKey ?? '',
+                  ProductThumbnail.forProduct(
+                    data.productById(line.productId),
                     width: 36,
                     height: 36,
                   ),
@@ -337,77 +365,14 @@ class _PurchaseFormDialogState extends State<PurchaseFormDialog> {
   }
 }
 
-/// La confirmación valida todas las líneas antes de modificar stock o precios.
+/// Abre la recepción vinculada a una orden existente.
 Future<void> receivePurchaseDialog(
   BuildContext context,
   PharmacyController controller,
   PurchaseOrder order,
-) => showDialog<bool>(
-  context: context,
-  builder: (_) => RecordFormDialog(
-    title: 'Recibir ${order.id}',
-    description:
-        'Proveedor: ${order.supplierName}. Usa el lote impreso en el envase. Fabricación, vencimiento y ubicación se registran por separado.',
-    fields: [
-      for (final line in order.lines) ...[
-        RecordField(
-          'batch-${line.productId}',
-          'Lote · ${line.productName} (${line.quantity} ${line.unit})',
-        ),
-        RecordField(
-          'manufactured-${line.productId}',
-          'Fabricación (AAAA-MM-DD)',
-          firstDate: DateTime(1900),
-          lastDate: controller.today,
-          keyboard: TextInputType.datetime,
-          validator: (v) {
-            final d = parseCalendarDate(v ?? '');
-            return d == null || d.isAfter(controller.today)
-                ? 'Fecha válida, no futura: AAAA-MM-DD.'
-                : null;
-          },
-        ),
-        RecordField(
-          'expiry-${line.productId}',
-          'Vencimiento (AAAA-MM-DD)',
-          firstDate: controller.today,
-          lastDate: DateTime(controller.today.year + 50, 12, 31),
-          keyboard: TextInputType.datetime,
-          validator: (v) {
-            final d = parseCalendarDate(v ?? '');
-            return d == null || d.isBefore(controller.today)
-                ? 'Fecha válida, no vencida: AAAA-MM-DD.'
-                : null;
-          },
-        ),
-        RecordField(
-          'location-${line.productId}',
-          'Ubicación · ${line.productName}',
-        ),
-        RecordField(
-          'price-${line.productId}',
-          'Precio de venta por ${line.unit.isEmpty ? 'unidad' : line.unit} (C\$)',
-          initial: (controller.productById(line.productId)?.price ?? 0) > 0
-              ? controller.productById(line.productId)!.price.toStringAsFixed(2)
-              : '',
-          validator: positiveAmount,
-          keyboard: const TextInputType.numberWithOptions(decimal: true),
-        ),
-      ],
-    ],
-    saveLabel: 'Confirmar recepción',
-    onSave: (v) => controller.receivePurchase(order.id, [
-      for (final line in order.lines)
-        LotReceipt(
-          productId: line.productId,
-          code: v['batch-${line.productId}']!,
-          expiry: parseCalendarDate(v['expiry-${line.productId}']!)!,
-          manufacturedAt: parseCalendarDate(
-            v['manufactured-${line.productId}']!,
-          )!,
-          location: v['location-${line.productId}']!,
-          salePrice: parseAmount(v['price-${line.productId}']!)!,
-        ),
-    ]),
-  ),
-).then((_) {});
+) async {
+  await showDialog<bool>(
+    context: context,
+    builder: (_) => PurchaseReceiptDialog(controller: controller, order: order),
+  );
+}

@@ -3,6 +3,7 @@ import '../config/administration_features.dart';
 import '../config/demo_people.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/json_value.dart';
+import '../utils/local_image_data.dart';
 import '../utils/legacy_interface_text.dart';
 import '../../models/auth/models/session_user.dart';
 import '../../models/contacts/models/contact.dart';
@@ -14,6 +15,7 @@ import '../../models/audit/models/audit_entry.dart';
 import '../../models/inventory/models/inventory_movement.dart';
 import 'local_administration_store.dart';
 import '../../models/products/models/product.dart';
+import '../../models/products/models/product_classification.dart';
 import '../../models/products/models/product_supplier.dart';
 import '../../models/products/models/product_illustration.dart';
 import '../../models/inventory/models/inventory_lot.dart';
@@ -176,6 +178,9 @@ class PharmacyController extends ChangeNotifier {
         ),
       );
   final List<ProductSupplier> _productSuppliers = [];
+  final List<(ProductClassification, String)> _customClassifications = [];
+  final Set<(ProductClassification, String)> _removedDefaultClassifications =
+      {};
   final List<Product> _products = [];
   final List<InventoryLot> _lots = [];
   final List<CartLine> _cart = [];
@@ -354,6 +359,7 @@ class PharmacyController extends ChangeNotifier {
       : List.unmodifiable(
           _products.where(
             (product) =>
+                product.photoData.isEmpty &&
                 ProductIllustrations.find(product.illustrationKey) == null &&
                 _recoverableIllustration(product).isNotEmpty,
           ),
@@ -403,6 +409,7 @@ class PharmacyController extends ChangeNotifier {
     String activeIngredient = '',
     String barcode = '',
     String? illustrationKey,
+    String? photoData,
   }) {
     final denied = _permissionError(administrator: true);
     if (denied != null) return denied;
@@ -444,6 +451,10 @@ class PharmacyController extends ChangeNotifier {
     // Omitir el parámetro conserva la selección al editar desde otros flujos.
     // Enviar vacío la elimina explícitamente, sin reactivarla al recargar.
     final imageKey = illustrationKey?.trim() ?? existing?.illustrationKey ?? '';
+    final photo = photoData ?? existing?.photoData ?? '';
+    if (photo.isNotEmpty && LocalImageKind.product.decode(photo) == null) {
+      return 'La foto del producto no es válida. Selecciónala y ajusta el encuadre de nuevo.';
+    }
     if (imageKey.isNotEmpty && ProductIllustrations.find(imageKey) == null) {
       return 'Selecciona una imagen disponible del catálogo.';
     }
@@ -480,6 +491,7 @@ class PharmacyController extends ChangeNotifier {
       activeIngredient: activeIngredient.trim(),
       barcode: barcode.trim(),
       illustrationKey: imageKey,
+      photoData: photo,
     );
     if (existing == null) {
       _products.add(record);

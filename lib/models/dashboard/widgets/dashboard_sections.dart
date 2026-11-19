@@ -66,8 +66,8 @@ class InventoryAlertsCard extends StatelessWidget {
               dense: true,
               // La miniatura usa la misma asociación que Productos y Lotes.
               // El estado sigue indicado por texto, sin depender de la foto.
-              leading: ProductThumbnail(
-                illustrationKey: item.product.illustrationKey,
+              leading: ProductThumbnail.forProduct(
+                item.product,
                 width: 40,
                 height: 40,
               ),

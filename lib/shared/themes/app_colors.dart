@@ -10,8 +10,8 @@ abstract final class AppColors {
   static const paleBlue = Color(0xFFEEF5FF);
   static const ink = Color(0xFF172033);
   static const muted = Color(0xFF6F7C91);
-  static const border = Color(0xFFE4EAF2);
-  static const canvas = Color(0xFFF7F9FC);
+  static const border = Color(0xFFDFE5ED);
+  static const canvas = Colors.white;
   static const green = Color(0xFF199B67);
   static const orange = Color(0xFFF08B3E);
   static const red = Color(0xFFE25D63);

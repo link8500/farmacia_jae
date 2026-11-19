@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (user == null) return const SizedBox.shrink();
       final title = AppPaths.titles[widget.selectedPage];
       final sidebar = Sidebar(
-        selected: widget.selectedPage,
+        selected: AppPaths.sidebarSection(widget.selectedPage),
         user: user,
         onSelect: _navigateTo,
         onProfile: () => _navigateTo(9),

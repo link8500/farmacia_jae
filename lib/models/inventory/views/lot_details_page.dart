@@ -15,11 +15,13 @@ class LotDetailsPage extends StatelessWidget {
     required this.controller,
     required this.lotId,
     required this.onBack,
+    this.onSupplier,
     super.key,
   });
   final PharmacyController controller;
   final String lotId;
   final VoidCallback onBack;
+  final ValueChanged<String>? onSupplier;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: controller,
@@ -33,25 +35,35 @@ class LotDetailsPage extends StatelessWidget {
         );
       }
       final product = controller.productById(lot.productId);
+      final supplier = controller.contactById(lot.supplierId);
       final movements =
           controller.movements.where((m) => m.lotId == lot.id).toList()
             ..sort((a, b) => b.at.compareTo(a.at));
       return RecordDetail(
         title: lot.code,
         subtitle: product?.name ?? '',
-        media: ProductThumbnail(
-          illustrationKey: product?.illustrationKey ?? '',
+        media: ProductThumbnail.forProduct(
+          product,
           height: 150,
           showCaption: true,
         ),
         onBack: onBack,
         actions: [
-          if (controller.isAdministrator)
+          if (controller.isAdministrator &&
+              supplier != null &&
+              onSupplier != null)
+            OutlinedButton.icon(
+              onPressed: () => onSupplier!(supplier.id),
+              icon: const Icon(Icons.local_shipping_outlined, size: 17),
+              label: const Text('Ver proveedor'),
+            ),
+          if (controller.isAdministrator &&
+              (lot.supplierId.isEmpty || lot.manufacturedAt == null))
             OutlinedButton.icon(
               onPressed: () => showDialog<bool>(
                 context: context,
                 builder: (_) => RecordFormDialog(
-                  title: 'Documentación del lote',
+                  title: 'Completar datos del lote anterior',
                   description:
                       '${lot.code} · ${product?.name ?? ''}. Conserva cantidad, costo y vencimiento. La corrección queda en el historial.',
                   fields: [
@@ -63,7 +75,9 @@ class LotDetailsPage extends StatelessWidget {
                         for (final s in controller.contacts.where(
                           (s) =>
                               s.kind == ContactKind.supplier &&
-                              (s.active || s.id == lot.supplierId),
+                              (lot.supplierId.isEmpty
+                                  ? s.active
+                                  : s.id == lot.supplierId),
                         ))
                           (s.id, '${s.code} · ${s.name}'),
                       ],
@@ -101,7 +115,7 @@ class LotDetailsPage extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.edit_note_outlined, size: 17),
-              label: const Text('Editar trazabilidad'),
+              label: const Text('Completar trazabilidad'),
             ),
 
           if (controller.isAdministrator)
@@ -138,11 +152,9 @@ class LotDetailsPage extends StatelessWidget {
           ('Producto', product?.name ?? ''),
           ('Cantidad', '${lot.quantity} ${product?.unit ?? ''}'),
           ('Código del fabricante', lot.code),
-          (
-            'Proveedor',
-            controller.contactById(lot.supplierId)?.name ??
-                'Pendiente de documentar',
-          ),
+          ('Proveedor', supplier?.name ?? 'Pendiente de documentar'),
+          if (supplier?.origin.isNotEmpty == true)
+            ('Origen del proveedor', supplier!.origin),
           (
             'Fabricación',
             lot.manufacturedAt == null

@@ -23,7 +23,7 @@ class ThemeModeOption extends StatelessWidget {
     child: Material(
       color: selected ? context.palette.paleBlue : context.palette.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(
           color: selected ? context.palette.blue : context.palette.border,
           width: selected ? 1.5 : 1,
@@ -31,7 +31,7 @@ class ThemeModeOption extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

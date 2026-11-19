@@ -209,7 +209,7 @@ void main() {
     await tester.ensureVisible(find.text('Acceso y seguridad'));
     await tester.tap(find.text('Acceso y seguridad'));
     await tester.pumpAndSettle();
-    expect(find.text('15 de 15 vistas'), findsOneWidget);
+    expect(find.text('17 de 17 vistas'), findsOneWidget);
     expect(find.text('Ana Martínez'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
@@ -230,7 +230,7 @@ void main() {
     await tester.ensureVisible(find.text('Acceso y seguridad'));
     await tester.tap(find.text('Acceso y seguridad'));
     await tester.pumpAndSettle();
-    expect(find.text('9 de 15 vistas'), findsOneWidget);
+    expect(find.text('9 de 17 vistas'), findsOneWidget);
     expect(find.text('Configuración general'), findsNothing);
     expect(
       GoRouter.of(

@@ -3,14 +3,13 @@ import '../../../core/services/pharmacy_controller.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/compact_workspace.dart';
 import '../../../shared/widgets/record_detail.dart';
-import '../../../shared/widgets/form_dialog.dart';
 import '../../../shared/widgets/workspace_sections.dart';
 import '../../../shared/widgets/record_form_dialog.dart';
 import '../models/support_case.dart';
 
 /// Registro, prioridad, seguimiento y cierre con una solución obligatoria.
-class IncidentsPage extends StatefulWidget {
-  const IncidentsPage({
+class SupportRequestsPage extends StatefulWidget {
+  const SupportRequestsPage({
     required this.controller,
     this.recordId,
     this.onOpen,
@@ -22,10 +21,10 @@ class IncidentsPage extends StatefulWidget {
   final VoidCallback? onBack;
   final PharmacyController controller;
   @override
-  State<IncidentsPage> createState() => _IncidentsPageState();
+  State<SupportRequestsPage> createState() => _SupportRequestsPageState();
 }
 
-class _IncidentsPageState extends State<IncidentsPage> {
+class _SupportRequestsPageState extends State<SupportRequestsPage> {
   String _query = '', _filter = 'Todos';
   String? _localId;
   final _search = TextEditingController();
@@ -56,57 +55,16 @@ class _IncidentsPageState extends State<IncidentsPage> {
     IncidentStatus.inProgress => 'En atención',
     IncidentStatus.resolved => 'Resuelto',
   };
-  void _help() => showDialog<void>(
-    context: context,
-    builder: (_) => const FormDialog(
-      title: 'Guía rápida',
-      description: 'Uso del espacio de trabajo',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Apariencia y texto',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          Text('Mi cuenta → Preferencias. Los ajustes son personales.'),
-          SizedBox(height: 16),
-          Text(
-            'Asignación para facturar',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          Text(
-            'Necesitas una sucursal activa y una caja asignada. El administrador gestiona tu puesto en Personal y asignaciones.',
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Disponibilidad de productos',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          Text(
-            'El producto debe estar habilitado en la sucursal y tener lotes vigentes para poder venderse.',
-          ),
-        ],
-      ),
-    ),
-  );
-  void _edit([SupportCase? record]) => showDialog<bool>(
+  void _edit(SupportCase record) => showDialog<bool>(
     context: context,
     builder: (_) => RecordFormDialog(
-      title: record == null ? 'Reportar un problema' : 'Actualizar solicitud',
-      description:
-          'Historial local de soporte. No genera tickets ni envía mensajes externos.',
+      title: 'Actualizar solicitud',
+      description: '${record.id} · ${record.title}',
       fields: [
-        RecordField('incident-title', 'Título', initial: record?.title ?? ''),
-        RecordField(
-          'incident-description',
-          'Descripción',
-          initial: record?.description ?? '',
-          lines: 3,
-        ),
         RecordField(
           'incident-priority',
           'Prioridad',
-          initial: record?.priority ?? 'Media',
+          initial: record.priority,
           options: const [
             ('Baja', 'Baja'),
             ('Media', 'Media'),
@@ -116,7 +74,7 @@ class _IncidentsPageState extends State<IncidentsPage> {
         RecordField(
           'incident-status',
           'Estado',
-          initial: record?.status.name ?? 'open',
+          initial: record.status.name,
           options: const [
             ('open', 'Abierto'),
             ('inProgress', 'En atención'),
@@ -126,15 +84,15 @@ class _IncidentsPageState extends State<IncidentsPage> {
         RecordField(
           'incident-resolution',
           'Solución (obligatoria al resolver)',
-          initial: record?.resolution ?? '',
+          initial: record.resolution,
           optional: true,
           lines: 3,
         ),
       ],
       onSave: (v) => widget.controller.saveIncident(
-        id: record?.id,
-        title: v['incident-title']!,
-        description: v['incident-description']!,
+        id: record.id,
+        title: record.title,
+        description: record.description,
         priority: v['incident-priority']!,
         status: IncidentStatus.values.byName(v['incident-status']!),
         resolution: v['incident-resolution']!,
@@ -157,7 +115,7 @@ class _IncidentsPageState extends State<IncidentsPage> {
             if (record != null)
               FilledButton(
                 onPressed: () => _edit(record),
-                child: const Text('Actualizar estado / editar'),
+                child: const Text('Actualizar solicitud'),
               ),
           ],
           fields: record == null
@@ -165,6 +123,7 @@ class _IncidentsPageState extends State<IncidentsPage> {
               : [
                   ('Estado', _status(record)),
                   ('Prioridad', record.priority),
+                  ('Enviada por', record.requestedBy),
                   ('Creación', formatDate(record.createdAt)),
                   ('Descripción', record.description),
                   ('Solución', record.resolution),
@@ -176,9 +135,9 @@ class _IncidentsPageState extends State<IncidentsPage> {
       final cases = data.incidents.reversed
           .where(
             (i) =>
-                '${i.title} ${i.id} ${i.description}'.toLowerCase().contains(
-                  _query,
-                ) &&
+                '${i.title} ${i.id} ${i.description} ${i.requestedBy}'
+                    .toLowerCase()
+                    .contains(_query) &&
                 (_filter == 'Todos' ||
                     (_filter == 'Resueltos'
                         ? i.status == IncidentStatus.resolved
@@ -196,20 +155,8 @@ class _IncidentsPageState extends State<IncidentsPage> {
                 ) /
                 resolved.length;
       return CompactWorkspace(
-        title: 'Ayuda y soporte',
-        subtitle: 'Consulta y da seguimiento a las solicitudes de ayuda.',
-        actions: [
-          OutlinedButton.icon(
-            onPressed: _help,
-            icon: const Icon(Icons.help_outline, size: 18),
-            label: const Text('Guía rápida'),
-          ),
-          FilledButton.icon(
-            onPressed: () => _edit(),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Reportar un problema'),
-          ),
-        ],
+        title: 'Solicitudes de soporte',
+        subtitle: 'Revisa, atiende y resuelve las solicitudes del personal.',
         toolbar: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -260,14 +207,20 @@ class _IncidentsPageState extends State<IncidentsPage> {
           rowBuilder: (i) {
             final r = cases[i];
             final edit = IconButton(
-              tooltip: 'Actualizar estado / editar',
+              tooltip: 'Actualizar solicitud',
               onPressed: () => _edit(r),
               icon: const Icon(Icons.edit_outlined, size: 18),
             );
             return RecordRow(
               onOpen: () => _open(r.id),
               cells: [
-                RecordIdentity(title: r.title, subtitle: r.id),
+                RecordIdentity(
+                  title: r.title,
+                  subtitle: [
+                    r.id,
+                    if (r.requestedBy.isNotEmpty) r.requestedBy,
+                  ].join(' · '),
+                ),
                 RecordText(r.priority),
                 RecordText(_status(r)),
                 RecordText(formatDate(r.createdAt)),

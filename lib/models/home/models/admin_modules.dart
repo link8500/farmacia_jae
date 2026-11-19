@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FLucideIcons;
 import '../../../core/config/administration_features.dart';
 import 'navigation_item.dart';
 
 /// Procesos del negocio, no una copia de una lista genérica de pantallas.
-/// Productos define las fichas; Lotes recibe y consulta sus existencias.
+/// Productos define las fichas, Compras recibe y Lotes consulta existencias.
 /// Los índices conservan las URLs anteriores, aunque cambia su agrupación.
 /// El módulo Inventario agrupa Productos, Lotes, Compras y Proveedores.
 /// Se conservan los IDs internos para no alterar navegación, permisos o enlaces.
@@ -11,113 +11,102 @@ const adminModules = <NavigationModule>[
   NavigationModule(
     id: 'supervision',
     label: 'Dashboard',
-    icon: Icons.insights_rounded,
+    icon: FLucideIcons.layoutDashboard,
     items: [
       NavigationItem(
         index: 0,
         label: 'Resumen',
-        icon: Icons.dashboard_outlined,
+        icon: FLucideIcons.layoutDashboard,
       ),
       NavigationItem(
         index: 6,
         label: 'Reportes',
-        icon: Icons.bar_chart_rounded,
+        icon: FLucideIcons.chartNoAxesColumn,
       ),
     ],
   ),
   NavigationModule(
     id: 'abastecimiento',
     label: 'Inventario',
-    icon: Icons.local_shipping_outlined,
+    icon: FLucideIcons.boxes,
     items: [
-      NavigationItem(
-        index: 10,
-        label: 'Productos',
-        icon: Icons.medication_outlined,
-      ),
-      NavigationItem(
-        index: 2,
-        label: 'Lotes',
-        icon: Icons.inventory_2_outlined,
-      ),
+      NavigationItem(index: 10, label: 'Productos', icon: FLucideIcons.pill),
+      NavigationItem(index: 2, label: 'Lotes', icon: FLucideIcons.package),
       NavigationItem(
         index: 3,
         label: 'Compras',
-        icon: Icons.shopping_bag_outlined,
+        icon: FLucideIcons.shoppingBag,
       ),
-      NavigationItem(
-        index: 4,
-        label: 'Proveedores',
-        icon: Icons.local_shipping_rounded,
-      ),
+      NavigationItem(index: 4, label: 'Proveedores', icon: FLucideIcons.truck),
     ],
   ),
   NavigationModule(
     id: 'ventas',
     label: 'Ventas',
-    icon: Icons.storefront_outlined,
+    icon: FLucideIcons.store,
     items: [
       // El código permanece disponible para una reactivación posterior.
       if (AdministrationFeatures.cashEnabled)
         NavigationItem(
           index: 11,
           label: 'Caja y arqueos',
-          icon: Icons.account_balance_wallet_outlined,
+          icon: FLucideIcons.wallet,
         ),
       NavigationItem(
         index: 13,
         label: 'Cajas de facturación',
-        icon: Icons.point_of_sale_outlined,
+        icon: FLucideIcons.wallet,
       ),
       NavigationItem(
         index: 1,
         label: 'Facturación',
-        icon: Icons.point_of_sale_rounded,
+        icon: FLucideIcons.receipt,
       ),
-      NavigationItem(
-        index: 5,
-        label: 'Clientes',
-        icon: Icons.people_alt_outlined,
-      ),
+      NavigationItem(index: 5, label: 'Clientes', icon: FLucideIcons.users),
     ],
   ),
   NavigationModule(
     id: 'administracion',
     label: 'Gestión de la farmacia',
-    icon: Icons.admin_panel_settings_outlined,
+    icon: FLucideIcons.shieldCheck,
     items: [
-      NavigationItem(
-        index: 15,
-        label: 'Promociones',
-        icon: Icons.local_offer_outlined,
-      ),
+      NavigationItem(index: 15, label: 'Promociones', icon: FLucideIcons.tag),
       NavigationItem(
         index: 12,
         label: 'Personal y asignaciones',
-        icon: Icons.account_tree_outlined,
+        icon: FLucideIcons.network,
       ),
       NavigationItem(
         index: 8,
         label: 'Datos y mantenimiento',
-        icon: Icons.storage_outlined,
+        icon: FLucideIcons.database,
+      ),
+      NavigationItem(
+        index: 17,
+        label: 'Solicitudes de soporte',
+        icon: FLucideIcons.inbox,
       ),
     ],
   ),
   NavigationModule(
     id: 'cuenta',
     label: 'Mi cuenta',
-    icon: Icons.person_outline_rounded,
+    icon: FLucideIcons.circleUser,
     items: [
-      NavigationItem(index: 9, label: 'Mi perfil', icon: Icons.badge_outlined),
+      NavigationItem(
+        index: 9,
+        label: 'Mi perfil',
+        icon: FLucideIcons.circleUser,
+      ),
       NavigationItem(
         index: 14,
         label: 'Preferencias',
-        icon: Icons.tune_rounded,
+        icon: FLucideIcons.slidersHorizontal,
       ),
       NavigationItem(
         index: 7,
         label: 'Ayuda y soporte',
-        icon: Icons.help_outline_rounded,
+        icon: FLucideIcons.circleHelp,
       ),
     ],
   ),

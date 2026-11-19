@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FLucideIcons;
 import '../themes/app_palette.dart';
+import 'section_card.dart';
 
 /// Formulario con jerarquía común: cabecera, campos y acciones al pie. En una
 /// ventana baja o con teclado, el conjunto se desplaza para conservar el acceso.
@@ -29,10 +31,27 @@ class FormDialog extends StatelessWidget {
     final pinActions =
         height >= (MediaQuery.textScalerOf(context).scale(1) > 1.4 ? 600 : 420);
     final header = Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (MediaQuery.sizeOf(context).width >= 400) ...[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.palette.paleBlue,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(
+                  FLucideIcons.slidersHorizontal,
+                  color: context.palette.blue,
+                  size: 19,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,6 +62,7 @@ class FormDialog extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -.25,
                   ),
                 ),
                 if (description.isNotEmpty) ...[
@@ -52,6 +72,7 @@ class FormDialog extends StatelessWidget {
                     style: TextStyle(
                       color: context.palette.muted,
                       fontSize: 12,
+                      height: 1.45,
                     ),
                   ),
                 ],
@@ -62,19 +83,22 @@ class FormDialog extends StatelessWidget {
           IconButton(
             tooltip: 'Cerrar ventana',
             onPressed: canClose ? () => Navigator.maybePop(context) : null,
-            icon: const Icon(Icons.close, size: 19),
+            icon: const Icon(FLucideIcons.x, size: 17),
           ),
         ],
       ),
     );
     final body = Padding(padding: const EdgeInsets.all(20), child: child);
-    final footer = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: 10,
-        runSpacing: 8,
-        children: actions,
+    final footer = ColoredBox(
+      color: context.palette.subtle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 10,
+          runSpacing: 8,
+          children: actions,
+        ),
       ),
     );
     final content = Column(
@@ -93,13 +117,14 @@ class FormDialog extends StatelessWidget {
     return Dialog(
       insetPadding: const EdgeInsets.all(20),
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: context.palette.border),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: height),
-        child: pinActions ? content : SingleChildScrollView(child: content),
+        child: SectionCard(
+          padding: EdgeInsets.zero,
+          radius: 16,
+          child: pinActions ? content : SingleChildScrollView(child: content),
+        ),
       ),
     );
   }

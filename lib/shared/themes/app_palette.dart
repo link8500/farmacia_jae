@@ -11,6 +11,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.border,
     required this.canvas,
     required this.surface,
+    required this.subtle,
     required this.paleBlue,
     required this.blue,
     required this.positiveSurface,
@@ -20,6 +21,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.heroEnd,
   });
   final Color ink, muted, border, canvas, surface, paleBlue, blue;
+  final Color subtle;
   final Color positiveSurface,
       negativeSurface,
       warningSurface,
@@ -28,10 +30,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
   static const light = AppPalette(
     ink: AppColors.ink,
     // Texto secundario con contraste mínimo 4.5:1 sobre superficie clara.
-    muted: Color(0xFF637187),
+    muted: Color(0xFF55647A),
     border: AppColors.border,
     canvas: AppColors.canvas,
     surface: Colors.white,
+    subtle: Color(0xFFF4F6F9),
     paleBlue: AppColors.paleBlue,
     blue: AppColors.blue,
     positiveSurface: Color(0xFFEAF8F1),
@@ -41,12 +44,13 @@ class AppPalette extends ThemeExtension<AppPalette> {
     heroEnd: Color(0xFFF2FAF6),
   );
   static const dark = AppPalette(
-    ink: Color(0xFFE8EFF9),
-    muted: Color(0xFFADBCD1),
-    border: Color(0xFF30435F),
-    canvas: Color(0xFF0D1626),
-    surface: Color(0xFF17243A),
-    paleBlue: Color(0xFF223856),
+    ink: Color(0xFFEAF0F8),
+    muted: Color(0xFFB2BECE),
+    border: Color(0xFF364456),
+    canvas: Color(0xFF151C27),
+    surface: Color(0xFF1C2635),
+    subtle: Color(0xFF253142),
+    paleBlue: Color(0xFF293D59),
     blue: Color(0xFF8AB4FF),
     positiveSurface: Color(0xFF19382F),
     negativeSurface: Color(0xFF3D2832),
@@ -62,6 +66,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? border,
     Color? canvas,
     Color? surface,
+    Color? subtle,
     Color? paleBlue,
     Color? blue,
     Color? positiveSurface,
@@ -75,6 +80,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     border: border ?? this.border,
     canvas: canvas ?? this.canvas,
     surface: surface ?? this.surface,
+    subtle: subtle ?? this.subtle,
     paleBlue: paleBlue ?? this.paleBlue,
     blue: blue ?? this.blue,
     positiveSurface: positiveSurface ?? this.positiveSurface,
@@ -94,6 +100,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
       border: blend(border, other.border),
       canvas: blend(canvas, other.canvas),
       surface: blend(surface, other.surface),
+      subtle: blend(subtle, other.subtle),
       paleBlue: blend(paleBlue, other.paleBlue),
       blue: blend(blue, other.blue),
       positiveSurface: blend(positiveSurface, other.positiveSurface),

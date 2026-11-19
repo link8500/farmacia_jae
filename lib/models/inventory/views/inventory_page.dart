@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/services/pharmacy_controller.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/compact_workspace.dart';
-import '../widgets/lot_form_dialog.dart';
 import '../widgets/inventory_actions.dart';
 import 'lot_details_page.dart';
 
@@ -12,6 +11,7 @@ class InventoryPage extends StatefulWidget {
   const InventoryPage({
     required this.controller,
     required this.onProducts,
+    this.onPurchases,
     this.productId,
     this.lotsView = false,
     this.onProductLots,
@@ -22,6 +22,7 @@ class InventoryPage extends StatefulWidget {
   });
   final PharmacyController controller;
   final VoidCallback onProducts;
+  final VoidCallback? onPurchases;
   final String? productId;
   final bool lotsView;
   final ValueChanged<String>? onProductLots, onLot;
@@ -101,21 +102,6 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
-  Future<void> _receive() async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (_) =>
-          LotFormDialog(controller: widget.controller, productId: _product),
-    );
-    if (saved == true && mounted) {
-      if (_product != null) {
-        _productLots(_product!);
-      } else {
-        _allLots();
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.controller,
@@ -152,13 +138,12 @@ class _InventoryPageState extends State<InventoryPage> {
               onPressed: widget.onProducts,
               child: const Text('Abrir catálogo de productos'),
             ),
-          FilledButton.icon(
-            onPressed: data.products.where((p) => p.active).isEmpty
-                ? null
-                : _receive,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Recibir lote'),
-          ),
+          if (data.isAdministrator && widget.onPurchases != null)
+            FilledButton.icon(
+              onPressed: widget.onPurchases,
+              icon: const Icon(Icons.local_shipping_outlined, size: 18),
+              label: const Text('Ir a compras'),
+            ),
         ],
         toolbar: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -20,7 +20,8 @@ extension AdministrationOperations on PharmacyController {
       isAdministrator ? List.unmodifiable(_cashSessions) : const [];
   List<CashMovement> get cashMovements =>
       isAdministrator ? List.unmodifiable(_cashMovements) : const [];
-  List<SupportCase> get incidents => List.unmodifiable(_incidents);
+  List<SupportCase> get incidents =>
+      isAdministrator ? List.unmodifiable(_incidents) : const [];
   List<AuditEntry> get audit => List.unmodifiable(
     _audit.where((a) => isAdministrator || a.actorId == actorId),
   );
@@ -541,7 +542,11 @@ extension AdministrationOperations on PharmacyController {
     return null;
   }
 
-  String? receivePurchase(String id, List<LotReceipt> receipts) {
+  String? receivePurchase(
+    String id,
+    List<LotReceipt> receipts, {
+    Map<String, String> manufacturerIndications = const {},
+  }) {
     final denied = _permissionError(administrator: true);
     if (denied != null) return denied;
     final index = _purchases.indexWhere((p) => p.id == id);
@@ -552,91 +557,115 @@ extension AdministrationOperations on PharmacyController {
     if (order.branchId != workingBranchId || workingBranch?.active != true) {
       return 'Selecciona la sucursal activa de la compra.';
     }
-    if (receipts.length != order.lines.length ||
-        receipts.map((r) => r.productId).toSet().length != receipts.length) {
-      return 'Completa el lote y vencimiento de cada línea.';
+    final indications = <String, String>{};
+    for (final entry in manufacturerIndications.entries) {
+      final text = entry.value.trim();
+      if (text.isEmpty) continue;
+      if (!order.lines.any((line) => line.productId == entry.key) ||
+          text.length > PurchaseOrder.maxManufacturerIndicationsLength) {
+        return 'Revisa las indicaciones del fabricante para los productos de la orden.';
+      }
+      indications[entry.key] = text;
     }
-    final prepared = <InventoryLot>[];
+    final receiptsByProduct = <String, List<LotReceipt>>{};
+    for (final receipt in receipts) {
+      (receiptsByProduct[receipt.productId] ??= []).add(receipt);
+    }
+    if (receiptsByProduct.length != order.lines.length) {
+      return 'Completa los lotes de cada producto de la orden.';
+    }
+    final prepared = <(InventoryLot lot, int receivedUnits)>[];
+    final prices = <String, double>{};
+    final branchLots = lots;
     for (final line in order.lines) {
-      final matches = receipts.where((r) => r.productId == line.productId);
-      if (matches.isEmpty) return 'Falta el lote de ${line.productName}.';
-      final received = matches.single;
-      final code = received.code.trim().toUpperCase();
-      if (code.isEmpty ||
-          InventoryLot.dayOnly(received.expiry).isBefore(today)) {
-        return 'Hay un lote sin código o vencido.';
+      final matches = receiptsByProduct[line.productId];
+      if (matches == null) return 'Faltan los lotes de ${line.productName}.';
+      final codes = <String>{};
+      var receivedUnits = 0;
+      for (final receipt in matches) {
+        final units =
+            receipt.quantity ?? (matches.length == 1 ? line.quantity : 0);
+        if (units <= 0 || units > line.quantity - receivedUnits) {
+          return 'Revisa las cantidades de ${line.productName}. Deben sumar ${line.quantity}.';
+        }
+        receivedUnits += units;
+        final code = receipt.code.trim().toUpperCase();
+        final expiry = InventoryLot.dayOnly(receipt.expiry);
+        if (code.isEmpty || expiry.isBefore(today) || !codes.add(code)) {
+          return 'Revisa los lotes de ${line.productName}. Indica códigos distintos y vigentes.';
+        }
+        final old = branchLots
+            .where(
+              (l) =>
+                  l.productId == line.productId && l.code.toUpperCase() == code,
+            )
+            .firstOrNull;
+        final firstReception = old?.receivedAt ?? today;
+        final documented = old?.manufacturedAt;
+        final entered = receipt.manufacturedAt;
+        final manufactured = entered == null
+            ? null
+            : InventoryLot.dayOnly(entered);
+        final location = receipt.location.trim();
+        if (manufactured != null &&
+            (manufactured.isAfter(InventoryLot.dayOnly(firstReception)) ||
+                !manufactured.isBefore(expiry))) {
+          return 'Revisa la fecha de fabricación del lote $code.';
+        }
+        if (old != null &&
+            ((old.supplierId.isNotEmpty &&
+                    old.supplierId != order.supplierId) ||
+                InventoryLot.dayOnly(old.expiry) != expiry ||
+                (documented != null &&
+                    manufactured != null &&
+                    InventoryLot.dayOnly(documented) != manufactured) ||
+                (old.location.isNotEmpty &&
+                    location.isNotEmpty &&
+                    old.location != location))) {
+          return 'El lote $code ya existe con otro proveedor, fechas o ubicación. Revisa la etiqueta y la orden.';
+        }
+        final price = receipt.salePrice;
+        if (price != null) {
+          if (!price.isFinite ||
+              price > 1000000 ||
+              money(price) <= 0 ||
+              _cart.any((l) => l.product.id == line.productId) ||
+              (prices.containsKey(line.productId) &&
+                  prices[line.productId] != money(price))) {
+            return 'Revisa el precio de venta y retira el producto del carrito.';
+          }
+          prices[line.productId] = money(price);
+        }
+        final oldQuantity = old?.quantity ?? 0;
+        final quantity = oldQuantity + units;
+        if (quantity > 1000000) return 'Cantidad fuera del límite local.';
+        prepared.add((
+          InventoryLot(
+            id: old?.id ?? '',
+            productId: line.productId,
+            branchId: order.branchId,
+            code: code,
+            supplierId: order.supplierId,
+            manufacturedAt: documented ?? manufactured,
+            location: location.isEmpty ? (old?.location ?? '') : location,
+            quantity: quantity,
+            expiry: expiry,
+            receivedAt: firstReception,
+            unitCost: old == null
+                ? line.unitCost
+                : (oldQuantity * old.unitCost + units * line.unitCost) /
+                      quantity,
+          ),
+          units,
+        ));
       }
-      if (received.manufacturedAt != null &&
-          (InventoryLot.dayOnly(received.manufacturedAt!).isAfter(today) ||
-              !InventoryLot.dayOnly(
-                received.manufacturedAt!,
-              ).isBefore(InventoryLot.dayOnly(received.expiry)))) {
-        return 'Revisa la fecha de fabricación de ${line.productName}.';
+      if (receivedUnits != line.quantity) {
+        return 'Los lotes de ${line.productName} deben sumar ${line.quantity} ${line.unit}.';
       }
-      if (received.salePrice != null &&
-          (!received.salePrice!.isFinite ||
-              money(received.salePrice!) <= 0 ||
-              received.salePrice! > 1000000 ||
-              _cart.any((l) => l.product.id == line.productId))) {
-        return 'Revisa el precio de venta y retira el producto del carrito.';
-      }
-      final old = _lots.where(
-        (l) =>
-            l.branchId == order.branchId &&
-            l.productId == line.productId &&
-            l.code.toUpperCase() == code,
-      );
-      if (old.isNotEmpty &&
-          InventoryLot.dayOnly(old.single.expiry) !=
-              InventoryLot.dayOnly(received.expiry)) {
-        return 'El lote $code ya existe con otro vencimiento.';
-      }
-      if (old.isNotEmpty &&
-          ((old.single.supplierId.isNotEmpty &&
-                  old.single.supplierId != order.supplierId) ||
-              (old.single.manufacturedAt != null &&
-                  received.manufacturedAt != null &&
-                  InventoryLot.dayOnly(old.single.manufacturedAt!) !=
-                      InventoryLot.dayOnly(received.manufacturedAt!)) ||
-              (old.single.location.isNotEmpty &&
-                  received.location.trim().isNotEmpty &&
-                  old.single.location != received.location.trim()))) {
-        return 'El lote $code tiene otro proveedor, fabricación o ubicación. Conserva su trazabilidad.';
-      }
-      if (old.isNotEmpty &&
-          received.manufacturedAt != null &&
-          InventoryLot.dayOnly(
-            received.manufacturedAt!,
-          ).isAfter(InventoryLot.dayOnly(old.single.receivedAt))) {
-        return 'La fabricación no puede ser posterior a la primera recepción del lote $code.';
-      }
-      final quantity = (old.isEmpty ? 0 : old.single.quantity) + line.quantity;
-      if (quantity > 1000000) return 'Cantidad fuera del límite local.';
-      prepared.add(
-        InventoryLot(
-          id: old.isEmpty ? '' : old.single.id,
-          productId: line.productId,
-          branchId: order.branchId,
-          code: code,
-          supplierId: order.supplierId,
-          manufacturedAt:
-              old.firstOrNull?.manufacturedAt ?? received.manufacturedAt,
-          location: received.location.trim().isEmpty
-              ? (old.firstOrNull?.location ?? '')
-              : received.location.trim(),
-          quantity: quantity,
-          expiry: InventoryLot.dayOnly(received.expiry),
-          receivedAt: old.isEmpty ? today : old.single.receivedAt,
-          unitCost: old.isEmpty
-              ? line.unitCost
-              : (old.single.quantity * old.single.unitCost + line.total) /
-                    quantity,
-        ),
-      );
     }
     // Solo tras validar toda la recepción se asignan IDs y se suman los saldos.
-    for (var i = 0; i < prepared.length; i++) {
-      final lot = prepared[i];
+    final receivedLots = <LotAllocation>[];
+    for (final (lot, units) in prepared) {
       final record = InventoryLot(
         id: lot.id.isEmpty ? _nextId('local-lot') : lot.id,
         productId: lot.productId,
@@ -656,15 +685,18 @@ extension AdministrationOperations on PharmacyController {
       } else {
         _lots[oldIndex] = record;
       }
-      _stockMovement(record, order.lines[i].quantity, 'Recepción $id');
+      receivedLots.add(LotAllocation(lotId: record.id, quantity: units));
+      _stockMovement(record, units, 'Recepción $id');
     }
-    for (final r in receipts) {
-      if (r.salePrice != null) {
-        final p = productById(r.productId)!;
-        _products[_products.indexOf(p)] = p.withPrice(money(r.salePrice!));
-      }
+    for (final entry in prices.entries) {
+      final product = productById(entry.key)!;
+      _products[_products.indexOf(product)] = product.withPrice(entry.value);
     }
-    _purchases[index] = order.received(now);
+    _purchases[index] = order.received(
+      now,
+      lots: receivedLots,
+      manufacturerIndications: indications,
+    );
     _commit('Compra recibida', '$id · lotes incorporados');
     return null;
   }
@@ -704,18 +736,23 @@ extension AdministrationOperations on PharmacyController {
     IncidentStatus status = IncidentStatus.open,
     String resolution = '',
   }) {
-    final denied = _permissionError();
+    final denied = _permissionError(
+      administrator:
+          id != null ||
+          status != IncidentStatus.open ||
+          resolution.trim().isNotEmpty,
+    );
     if (denied != null) return denied;
     if (title.trim().isEmpty ||
         description.trim().isEmpty ||
         !['Baja', 'Media', 'Alta'].contains(priority)) {
-      return 'Completa el incidente y su prioridad.';
+      return 'Completa la solicitud y su prioridad.';
     }
     if (status == IncidentStatus.resolved && resolution.trim().isEmpty) {
-      return 'Describe la solución para cerrar el incidente.';
+      return 'Describe la solución para cerrar la solicitud.';
     }
     final index = id == null ? -1 : _incidents.indexWhere((i) => i.id == id);
-    if (id != null && index < 0) return 'Incidente no encontrado.';
+    if (id != null && index < 0) return 'Solicitud no encontrada.';
     final old = index < 0
         ? SupportCase(
             id: _nextId('INC'),
@@ -723,6 +760,7 @@ extension AdministrationOperations on PharmacyController {
             description: description.trim(),
             priority: priority,
             createdAt: now,
+            requestedBy: actorName,
           )
         : _incidents[index];
     final record = old.update(
@@ -739,7 +777,9 @@ extension AdministrationOperations on PharmacyController {
       _incidents[index] = record;
     }
     _commit(
-      index < 0 ? 'Incidente registrado' : 'Incidente actualizado',
+      index < 0
+          ? 'Solicitud de soporte enviada'
+          : 'Solicitud de soporte actualizada',
       '${record.id} · ${record.status.name}',
     );
     return null;

@@ -92,6 +92,8 @@ class PreferencesController extends ChangeNotifier {
       _apply(value.copyWith(density: density));
   void setHighContrast(bool enabled) =>
       _apply(value.copyWith(highContrast: enabled));
+  void setColorFilter(WorkspaceColorFilter filter) =>
+      _apply(value.copyWith(colorFilter: filter));
   void setReduceMotion(bool enabled) =>
       _apply(value.copyWith(reduceMotion: enabled));
   void setConfirmClearSale(bool enabled) =>

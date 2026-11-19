@@ -18,6 +18,10 @@ abstract final class AppPaths {
   static const billingRegisters = '/administracion/cajas';
   static const preferences = '/administracion/preferencias';
   static const promotions = '/administracion/promociones';
+  static const support = '$administration/ayuda';
+  static const legacySupport = '$administration/incidentes';
+  static const productClassifications = '$administration/catalogos-producto';
+  static const supportRequests = '$administration/solicitudes-soporte';
 
   /// Mantiene los índices de los módulos existentes para preservar sus acciones.
   static const sections = <String>[
@@ -28,7 +32,7 @@ abstract final class AppPaths {
     '$administration/proveedores',
     '$administration/clientes',
     '$administration/reportes',
-    '$administration/incidentes',
+    support,
     '$administration/configuracion',
     profile,
     products,
@@ -37,6 +41,8 @@ abstract final class AppPaths {
     billingRegisters,
     preferences,
     promotions,
+    productClassifications,
+    supportRequests,
   ];
 
   static const titles = <String>[
@@ -56,10 +62,12 @@ abstract final class AppPaths {
     'Cajas de facturación',
     'Mis preferencias',
     'Promociones',
+    'Categorías y presentaciones',
+    'Solicitudes de soporte',
   ];
 
   /// Estas vistas requieren el rol de administrador, además de una sesión.
-  static const administratorOnly = <int>{3, 4, 6, 8, 12, 15};
+  static const administratorOnly = <int>{3, 4, 6, 8, 12, 15, 16, 17};
 
   /// Se reserva el índice de Caja para no desplazar las rutas ya existentes.
   static const disabledSections = <int>{
@@ -71,6 +79,9 @@ abstract final class AppPaths {
   ];
 
   static int indexOf(String path) => sections.indexOf(path);
+
+  /// La configuración del catálogo pertenece a Productos en el menú lateral.
+  static int sidebarSection(int index) => index == 16 ? 10 : index;
 
   static const preferenceLabels = [
     'Apariencia',
@@ -109,7 +120,7 @@ abstract final class AppPaths {
         },
       ).toString();
   static String supportLocation(String id) =>
-      Uri(path: sections[7], queryParameters: {'solicitud': id}).toString();
+      Uri(path: supportRequests, queryParameters: {'solicitud': id}).toString();
   static String promotionLocation(String id) =>
       Uri(path: promotions, queryParameters: {'promocion': id}).toString();
   static const organizationLabels = [
@@ -174,7 +185,7 @@ abstract final class AppPaths {
     final auxiliaryDetail = switch (index) {
       13 when uri.queryParameters['caja']?.isNotEmpty == true =>
         'Ventas de la caja',
-      7 when uri.queryParameters['solicitud']?.isNotEmpty == true =>
+      17 when uri.queryParameters['solicitud']?.isNotEmpty == true =>
         'Detalle de solicitud',
       15 when uri.queryParameters['promocion']?.isNotEmpty == true =>
         'Detalle de campaña',
@@ -191,6 +202,13 @@ abstract final class AppPaths {
         (label: 'Dashboard', location: administration),
         (label: 'Reportes', location: sections[6]),
         (label: 'Detalle de registros', location: null),
+      ];
+    }
+    if (index == 16) {
+      return [
+        (label: 'Inventario', location: sections[2]),
+        (label: 'Productos', location: products),
+        (label: titles[index], location: null),
       ];
     }
     final detail = switch (index) {
@@ -251,7 +269,7 @@ abstract final class AppPaths {
       0 || 6 => ('Dashboard', administration),
       2 || 3 || 4 || 10 => ('Inventario', products),
       5 || 11 || 13 => ('Ventas', sections[1]),
-      8 || 12 || 15 => ('Gestión de la farmacia', organization),
+      8 || 12 || 15 || 17 => ('Gestión de la farmacia', organization),
       _ => ('Mi cuenta', profile),
     };
     return [
@@ -278,7 +296,7 @@ abstract final class AppPaths {
         end: DateTime.tryParse(uri.queryParameters['hasta'] ?? ''),
       );
     }
-    if (index == 7 && uri.queryParameters['solicitud']?.isNotEmpty == true) {
+    if (index == 17 && uri.queryParameters['solicitud']?.isNotEmpty == true) {
       return supportLocation(uri.queryParameters['solicitud']!);
     }
     if (index == 15 && uri.queryParameters['promocion']?.isNotEmpty == true) {

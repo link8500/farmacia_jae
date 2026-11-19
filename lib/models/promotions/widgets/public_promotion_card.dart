@@ -22,8 +22,12 @@ class PublicPromotionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (promotion.illustrationKey.isNotEmpty)
-            PromotionArtwork(imageKey: promotion.illustrationKey, height: 150)
+          if (promotion.hasArtwork)
+            PromotionArtwork(
+              imageKey: promotion.illustrationKey,
+              photoData: promotion.photoData,
+              height: 150,
+            )
           else
             Container(
               height: 130,

@@ -128,12 +128,8 @@ Future<void> showReceipt(
                             padding: const EdgeInsets.all(10),
                             child: Row(
                               children: [
-                                ProductThumbnail(
-                                  illustrationKey:
-                                      controller
-                                          ?.productById(line.productId)
-                                          ?.illustrationKey ??
-                                      '',
+                                ProductThumbnail.forProduct(
+                                  controller?.productById(line.productId),
                                   width: 36,
                                   height: 36,
                                 ),

@@ -13,11 +13,13 @@ class ProductsPage extends StatefulWidget {
   const ProductsPage({
     required this.controller,
     required this.onInventory,
+    this.onClassifications,
     this.onOpen,
     super.key,
   });
   final PharmacyController controller;
   final VoidCallback onInventory;
+  final VoidCallback? onClassifications;
   final ValueChanged<String>? onOpen;
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -51,7 +53,7 @@ class _ProductsPageState extends State<ProductsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Producto registrado. Recibe sus existencias en Lotes.',
+            'Producto registrado. Incorpora sus existencias al recibir una compra.',
           ),
         ),
       );
@@ -104,8 +106,7 @@ class _ProductsPageState extends State<ProductsPage> {
                   p.barcode,
                   p.activeIngredient,
                   p.dosage,
-                  p.manufacturer,
-                  p.origin,
+                  p.presentation,
                 ].any((v) => v.toLowerCase().contains(_query)),
           )
           .toList();
@@ -124,6 +125,12 @@ class _ProductsPageState extends State<ProductsPage> {
               tooltip: 'Recuperar imágenes',
               onPressed: _restoreImages,
               icon: const Icon(Icons.add_photo_alternate_outlined),
+            ),
+          if (data.isAdministrator && widget.onClassifications != null)
+            OutlinedButton.icon(
+              onPressed: widget.onClassifications,
+              icon: const Icon(Icons.tune_outlined, size: 17),
+              label: const Text('Gestionar categorías y presentaciones'),
             ),
           if (data.isAdministrator)
             FilledButton.icon(
@@ -172,11 +179,8 @@ class _ProductsPageState extends State<ProductsPage> {
           ],
           rowBuilder: (index) {
             final p = products[index];
-            Widget thumbnail() => ProductThumbnail(
-              illustrationKey: p.illustrationKey,
-              width: 38,
-              height: 38,
-            );
+            Widget thumbnail() =>
+                ProductThumbnail.forProduct(p, width: 38, height: 38);
             Widget menu() => RecordActions(
               recordKey: 'product-actions-${p.id}',
               actions: [

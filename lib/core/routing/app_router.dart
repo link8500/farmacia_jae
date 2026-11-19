@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../models/auth/views/login_page.dart';
 import '../../models/dashboard/views/dashboard_page.dart';
 import '../../models/home/views/home.dart';
-import '../../models/incidents/views/incidents_page.dart';
+import '../../models/incidents/views/support_requests_page.dart';
+import '../../models/incidents/views/support_submission_page.dart';
 import '../../models/inventory/views/inventory_page.dart';
 import '../../models/inventory/views/lot_details_page.dart';
 import '../../models/contacts/views/contacts_page.dart';
@@ -23,6 +24,7 @@ import '../../models/promotions/views/promotions_admin_page.dart';
 import '../../models/profile/views/profile_page.dart';
 import '../../models/products/views/products_page.dart';
 import '../../models/products/views/product_details_page.dart';
+import '../../models/products/views/product_classifications_page.dart';
 import '../../models/reports/views/reports_page.dart';
 import '../../models/sales/views/sales_page.dart';
 import '../../models/settings/views/settings_page.dart';
@@ -81,6 +83,15 @@ GoRouter createAppRouter({
       GoRoute(
         path: AppPaths.legacyLogin,
         redirect: (_, _) => AppPaths.administration,
+      ),
+      GoRoute(
+        path: AppPaths.legacySupport,
+        redirect: (_, state) {
+          final id = state.uri.queryParameters['solicitud'];
+          return id == null || id.isEmpty
+              ? AppPaths.support
+              : AppPaths.supportLocation(id);
+        },
       ),
       ShellRoute(
         builder: (context, state, child) => AnimatedBuilder(
@@ -228,6 +239,7 @@ Widget _buildAdministrationPage(
     2 when uri.queryParameters['lote']?.isNotEmpty == true => LotDetailsPage(
       controller: pharmacy,
       lotId: uri.queryParameters['lote']!,
+      onSupplier: (id) => context.push(AppPaths.contactLocation(4, id)),
       onBack: () => backTo(
         AppPaths.inventoryLocation(
           productId: uri.queryParameters['producto'],
@@ -251,6 +263,7 @@ Widget _buildAdministrationPage(
         ),
       ),
       onProducts: () => context.go(AppPaths.products),
+      onPurchases: () => navigate(3),
     ),
     3 when uri.queryParameters['compra']?.isNotEmpty == true =>
       PurchaseDetailsPage(
@@ -265,6 +278,9 @@ Widget _buildAdministrationPage(
             ? 'Volver al proveedor'
             : 'Volver al listado',
         onProduct: (id) => context.push(AppPaths.productLocation(id)),
+        onLot: (id) =>
+            context.push(AppPaths.inventoryLocation(lotId: id, lots: true)),
+        onSupplier: (id) => context.push(AppPaths.contactLocation(4, id)),
       ),
     3 => PurchasesPage(
       controller: pharmacy,
@@ -298,12 +314,7 @@ Widget _buildAdministrationPage(
       detailsView: uri.queryParameters['vista'] == 'detalle',
       onView: (details) => context.go(AppPaths.reportLocation(details)),
     ),
-    7 => IncidentsPage(
-      controller: pharmacy,
-      recordId: uri.queryParameters['solicitud'],
-      onOpen: (id) => context.push(AppPaths.supportLocation(id)),
-      onBack: () => backTo(AppPaths.sections[7]),
-    ),
+    7 => SupportSubmissionPage(controller: pharmacy),
     8 => SystemToolsPage(
       controller: pharmacy,
       onPreferences: () => navigate(14),
@@ -323,6 +334,7 @@ Widget _buildAdministrationPage(
     10 => ProductsPage(
       controller: pharmacy,
       onInventory: () => navigate(2),
+      onClassifications: () => context.push(AppPaths.productClassifications),
       onOpen: (id) => context.push(AppPaths.productLocation(id)),
     ),
     11 => CashPage(controller: pharmacy),
@@ -356,6 +368,16 @@ Widget _buildAdministrationPage(
               onBack: () => backTo(AppPaths.promotions),
               onPublicPage: () => context.go(AppPaths.publicPromotions),
             ),
+    16 => ProductClassificationsPage(
+      controller: pharmacy,
+      onBack: () => backTo(AppPaths.products),
+    ),
+    17 => SupportRequestsPage(
+      controller: pharmacy,
+      recordId: uri.queryParameters['solicitud'],
+      onOpen: (id) => context.push(AppPaths.supportLocation(id)),
+      onBack: () => backTo(AppPaths.supportRequests),
+    ),
     _ => const SizedBox.shrink(),
   };
 }

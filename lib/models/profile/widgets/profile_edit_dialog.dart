@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_controller.dart';
-import '../../../core/services/profile_photo_picker.dart';
+import '../../../core/utils/local_image_data.dart';
 import '../../../shared/themes/app_palette.dart';
 import '../../../shared/widgets/form_dialog.dart';
+import '../../../shared/widgets/draft_photo_actions.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/models/session_user.dart';
 import '../models/profile_appearance.dart';
@@ -14,7 +17,7 @@ class ProfileEditDialog extends StatefulWidget {
   final AuthController auth;
 
   /// Inyección de pruebas: evita abrir selectores nativos durante las pruebas.
-  final Future<String?> Function()? photoPicker;
+  final Future<Uint8List?> Function()? photoPicker;
   @override
   State<ProfileEditDialog> createState() => _ProfileEditDialogState();
 }
@@ -63,36 +66,6 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
     _phone.dispose();
     _email.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickPhoto() async {
-    setState(() {
-      _picking = true;
-      _error = null;
-    });
-    try {
-      final photo = await (widget.photoPicker ?? selectProfilePhoto)();
-      if (!mounted || widget.auth.user?.id != _original.id) return;
-      if (photo != null) {
-        if (ProfilePhoto.decode(photo) == null) {
-          throw const FormatException('La foto seleccionada no es válida.');
-        }
-        setState(() {
-          _photo = photo;
-          _asset = '';
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error is FormatException
-              ? error.message
-              : 'No se pudo abrir la foto.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _picking = false);
-    }
   }
 
   Future<void> _save() async {
@@ -180,35 +153,23 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                 ),
               ),
               const SizedBox(height: 14),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 8,
-                children: [
-                  if (supportsProfilePhoto || widget.photoPicker != null)
-                    OutlinedButton.icon(
-                      key: const Key('profile-photo-pick'),
-                      onPressed: busy ? null : _pickPhoto,
-                      icon: const Icon(
-                        Icons.add_photo_alternate_outlined,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _picking ? 'Preparando foto…' : 'Cargar foto',
-                      ),
-                    ),
-                  if (_photo.isNotEmpty || _asset.isNotEmpty)
-                    TextButton(
-                      key: const Key('profile-photo-remove'),
-                      onPressed: busy
-                          ? null
-                          : () => setState(() {
-                              _photo = '';
-                              _asset = '';
-                            }),
-                      child: const Text('Quitar foto'),
-                    ),
-                ],
+              Center(
+                child: DraftPhotoActions(
+                  id: 'profile-photo',
+                  kind: LocalImageKind.avatar,
+                  photo: _photo,
+                  hasAsset: _asset.isNotEmpty,
+                  enabled: !_saving,
+                  pickFile: widget.photoPicker,
+                  onBusyChanged: (busy) => setState(() => _picking = busy),
+                  onChanged: (photo) {
+                    if (widget.auth.user?.id != _original.id) return;
+                    setState(() {
+                      _photo = photo;
+                      _asset = '';
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               Text(

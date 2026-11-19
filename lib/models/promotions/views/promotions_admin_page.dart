@@ -84,9 +84,13 @@ class _PromotionsAdminPageState extends State<PromotionsAdminPage> {
           title: p?.title ?? 'Promoción no disponible',
           onBack: _back,
           subtitle: 'Contenido editorial de la presentación.',
-          media: p == null || p.illustrationKey.isEmpty
+          media: p == null || !p.hasArtwork
               ? null
-              : PromotionArtwork(imageKey: p.illustrationKey, height: 120),
+              : PromotionArtwork(
+                  imageKey: p.illustrationKey,
+                  photoData: p.photoData,
+                  height: 120,
+                ),
           actions: [
             if (p != null)
               FilledButton.icon(
@@ -209,13 +213,14 @@ class _PromotionsAdminPageState extends State<PromotionsAdminPage> {
                         RecordIdentity(
                           title: p.title,
                           subtitle: p.badge,
-                          leading: p.illustrationKey.isEmpty
+                          leading: !p.hasArtwork
                               ? null
                               : SizedBox(
                                   width: 44,
                                   height: 32,
                                   child: PromotionArtwork(
                                     imageKey: p.illustrationKey,
+                                    photoData: p.photoData,
                                     height: 32,
                                     width: 44,
                                   ),
@@ -231,13 +236,14 @@ class _PromotionsAdminPageState extends State<PromotionsAdminPage> {
                       ],
                       mobile: RecordTile(
                         title: p.title,
-                        leading: p.illustrationKey.isEmpty
+                        leading: !p.hasArtwork
                             ? null
                             : SizedBox(
                                 width: 48,
                                 height: 40,
                                 child: PromotionArtwork(
                                   imageKey: p.illustrationKey,
+                                  photoData: p.photoData,
                                   height: 40,
                                   width: 48,
                                 ),

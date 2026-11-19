@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmacia_sae/core/app.dart';
@@ -23,15 +24,17 @@ class _ProfileStore extends MemoryPreferencesStore {
   }
 }
 
-Future<String> _photo() async {
+Future<String> _photo({bool landscape = false}) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder)..drawColor(Colors.blue, BlendMode.src);
   canvas.drawRect(
-    const Rect.fromLTWH(0, 0, 2, 2),
+    landscape
+        ? const Rect.fromLTWH(0, 0, 4, 4)
+        : const Rect.fromLTWH(0, 0, 2, 2),
     Paint()..color = Colors.teal,
   );
   final picture = recorder.endRecording();
-  final image = await picture.toImage(2, 2);
+  final image = await picture.toImage(landscape ? 8 : 2, landscape ? 4 : 2);
   final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
   final result =
       'data:image/png;base64,${base64Encode(bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes))}';
@@ -58,7 +61,7 @@ void main() {
   Future<void> openEditor(
     WidgetTester tester,
     AuthController auth, {
-    Future<String?> Function()? photoPicker,
+    Future<Uint8List?> Function()? photoPicker,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -327,52 +330,105 @@ void main() {
     },
   );
 
-  testWidgets('cargar, cancelar selección y quitar foto respeta el borrador', (
-    tester,
-  ) async {
-    final auth = await login(tester);
-    final photo = await tester.runAsync(_photo);
-    var times = 0;
-    await openEditor(
-      tester,
-      auth,
-      photoPicker: () async => times++ == 0 ? photo : null,
-    );
-    await tester.tap(find.byKey(const Key('profile-photo-pick')));
-    await tester.pumpAndSettle();
-    expect(auth.user!.avatarPhoto, isEmpty);
-    expect(
-      tester
-          .widget<UserAvatar>(find.byKey(const Key('profile-avatar-preview')))
-          .user
-          .avatarPhoto,
-      photo,
-    );
-    await tester.tap(find.byKey(const Key('profile-photo-pick')));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<UserAvatar>(find.byKey(const Key('profile-avatar-preview')))
-          .user
-          .avatarPhoto,
-      photo,
-    );
-    await tester.tap(find.byKey(const Key('profile-photo-remove')));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<UserAvatar>(find.byKey(const Key('profile-avatar-preview')))
-          .user
-          .avatarPhoto,
-      isEmpty,
-    );
-    await tester.tap(find.byKey(const Key('profile-photo-pick')));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('profile-cancel')));
-    await tester.tap(find.byKey(const Key('profile-cancel')));
-    await tester.pumpAndSettle();
-    expect(auth.user!.avatarPhoto, isEmpty);
-  });
+  testWidgets(
+    'la foto se encuadra antes de aplicarla y cancelar conserva el borrador',
+    (tester) async {
+      final auth = await login(tester);
+      final source = ProfilePhoto.decode(
+        (await tester.runAsync(() => _photo(landscape: true)))!,
+      )!;
+      var times = 0;
+      await openEditor(
+        tester,
+        auth,
+        photoPicker: () async => times++ < 2 ? source : null,
+      );
+
+      final pick = find.byKey(const Key('profile-photo-pick'));
+      final confirm = find.byKey(const Key('image-frame-confirm'));
+      final adjust = find.byKey(const Key('profile-photo-adjust'));
+      final preview = find.byKey(const Key('profile-avatar-preview'));
+      String draft() => tester.widget<UserAvatar>(preview).user.avatarPhoto;
+
+      // El códec y la exportación de Canvas completan fuera del reloj simulado.
+      Future<void> tapUntil(Finder button, Finder result) async {
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.runAsync(() async {
+          await tester.tap(button);
+          for (var i = 0; i < 100 && result.evaluate().isEmpty; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 8));
+            await tester.pump(const Duration(milliseconds: 20));
+          }
+        });
+        await tester.pumpAndSettle();
+        expect(result, findsOneWidget);
+      }
+
+      await tapUntil(pick, confirm);
+      expect(auth.user!.avatarPhoto, isEmpty);
+      expect(draft(), isEmpty);
+      final rotate = find.byKey(const Key('image-frame-rotate'));
+      await tester.ensureVisible(rotate);
+      await tester.pumpAndSettle();
+      await tester.tap(rotate);
+      await tester.pumpAndSettle();
+      await tapUntil(confirm, adjust);
+      final framed = draft();
+      expect(framed, isNotEmpty);
+      expect(auth.user!.avatarPhoto, isEmpty);
+      await tester.runAsync(() async {
+        final codec = await ui.instantiateImageCodec(
+          ProfilePhoto.decode(framed)!,
+        );
+        final image = (await codec.getNextFrame()).image;
+        try {
+          expect(image.width, 256);
+          expect(image.height, 256);
+          final pixels = (await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          ))!;
+          final top = (32 * image.width + 128) * 4;
+          final bottom = (224 * image.width + 128) * 4;
+          expect(
+            pixels.getUint8(top + 1),
+            greaterThan(pixels.getUint8(top + 2)),
+          );
+          expect(
+            pixels.getUint8(bottom + 2),
+            greaterThan(pixels.getUint8(bottom + 1)),
+          );
+        } finally {
+          image.dispose();
+          codec.dispose();
+        }
+      });
+
+      await tapUntil(pick, confirm);
+      final readyToPick = find.byWidgetPredicate(
+        (widget) =>
+            widget is OutlinedButton &&
+            widget.key == const Key('profile-photo-pick') &&
+            widget.onPressed != null,
+      );
+      await tapUntil(find.text('Cancelar').last, readyToPick);
+      expect(draft(), framed);
+      await tester.tap(pick);
+      await tester.pumpAndSettle();
+      expect(draft(), framed);
+      final remove = find.byKey(const Key('profile-photo-remove'));
+      await tester.ensureVisible(remove);
+      await tester.pumpAndSettle();
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(draft(), isEmpty);
+      await tester.ensureVisible(find.byKey(const Key('profile-cancel')));
+      await tester.tap(find.byKey(const Key('profile-cancel')));
+      await tester.pumpAndSettle();
+      expect(auth.user!.avatarPhoto, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'error de guardado es visible y permite reintentar sin éxito ficticio',
@@ -417,7 +473,7 @@ void main() {
     'se puede cancelar el modal incluso con el selector de foto pendiente',
     (tester) async {
       final auth = await login(tester);
-      final pending = Completer<String?>();
+      final pending = Completer<Uint8List?>();
       await openEditor(tester, auth, photoPicker: () => pending.future);
       await tester.tap(find.byKey(const Key('profile-photo-pick')));
       await tester.pump();
